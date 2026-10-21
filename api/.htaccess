@@ -1,10 +1,13 @@
-# API front controller.
-# Acesso direto a QUALQUER arquivo diferente de index.php é negado —
-# protege src/, vendor/, config.php, migrations/ e tests/.
+# API front controller (nivel /api).
+# 1) Arquivo existente que nao seja index.php -> 403
+#    (protege config.php, src/, vendor/, migrations/, tests/)
+# 2) Qualquer outra coisa -> index.php (rotas da API)
 Options -Indexes
+RewriteEngine On
 
-Require all denied
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteCond %{REQUEST_FILENAME} !index\.php$
+RewriteRule ^ - [F,L]
 
-<Files "index.php">
-    Require all granted
-</Files>
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L]

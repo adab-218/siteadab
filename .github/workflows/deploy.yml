@@ -77,11 +77,16 @@ jobs:
           protocol: ftps
           port: 21
           local-dir: ./deploy_pkg/
-          server-dir: /public_html/
+          # O root da conta FTP já é o docroot de adab.teo.br
+          server-dir: /
           exclude: |
             **/.git*
 
       - name: Rodar migrations no servidor
         run: |
           curl -fsS -X POST "https://adab.teo.br/api/admin/migrate" \
-            -H "X-Migrate-Token: ${{ secrets.MIGRATE_TOKEN }}"
+            -H "X-Migrate-Token: ${{ secrets.MIGRATE_TOKEN }}" \
+            -H "User-Agent: adab-deploy" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -d '{}'
