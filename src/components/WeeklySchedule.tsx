@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, Calendar, Clock, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Edit2, Trash2, Save, X, Calendar } from 'lucide-react';
 
 interface ScheduleEvent {
   id: string;
@@ -39,12 +39,17 @@ const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({ onClose }) => {
     responsible: ''
   });
 
-  const [currentWeek, setCurrentWeek] = useState(() => {
-    const today = new Date();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - today.getDay() + 1);
+  const mondayOfWeek = (date: Date) => {
+    const monday = new Date(date);
+    const day = date.getDay();
+    monday.setDate(date.getDate() + (day === 0 ? -6 : 1 - day));
     return monday;
-  });
+  };
+
+  const toLocalISODate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const [currentWeek, setCurrentWeek] = useState(() => mondayOfWeek(new Date()));
 
   const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
   
@@ -165,12 +170,11 @@ const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({ onClose }) => {
                 <Calendar size={16} className="text-gray-600" />
                 <input
                   type="date"
-                  value={currentWeek.toISOString().split('T')[0]}
+                  value={toLocalISODate(currentWeek)}
                   onChange={(e) => {
-                    const newDate = new Date(e.target.value);
-                    const monday = new Date(newDate);
-                    monday.setDate(newDate.getDate() - newDate.getDay() + 1);
-                    setCurrentWeek(monday);
+                    const [y, m, d] = e.target.value.split('-').map(Number);
+                    if (!y || !m || !d) return;
+                    setCurrentWeek(mondayOfWeek(new Date(y, m - 1, d)));
                   }}
                   className="border border-gray-300 rounded px-3 py-1 text-sm"
                 />
@@ -268,7 +272,7 @@ const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({ onClose }) => {
 
         {/* Add Event Modal */}
         {isAddingEvent && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
             <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
               <h3 className="text-lg font-bold mb-4">Adicionar Nova Atividade</h3>
               

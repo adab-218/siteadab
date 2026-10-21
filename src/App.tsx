@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronRight, Users, Heart, BookOpen, HandHeart, MapPin, Phone, Mail, Facebook, Play, Sparkles, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { Menu, X, ChevronRight, Users, Heart, BookOpen, HandHeart, MapPin, Mail, Facebook, Sparkles, Calendar } from 'lucide-react';
 import WeeklySchedule from './components/WeeklySchedule';
 
 interface MenuItemProps {
@@ -533,7 +533,7 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
             
             <div>
               <p className="text-gray-300 mb-2">
-                © 2025 AD Templo Arthur Bernardes. Todos os direitos reservados.
+                © {new Date().getFullYear()} AD Templo Arthur Bernardes. Todos os direitos reservados.
               </p>
               <p className="text-gray-400 text-sm">
                 Av. Arthur Bernardes, 218 - Pratinha, Belém - PA, 66816-000

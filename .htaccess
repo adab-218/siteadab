@@ -1,0 +1,26 @@
+# public_html/.htaccess — adab.teo.br
+# Deployed na raiz do site pelo workflow (ver dev/docs/11).
+
+# Forçar HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# /api/* → front controller da API (caminho preservado; Slim usa basePath /api)
+RewriteRule ^api(/.*)?$ api/index.php [L]
+
+# SPA fallback (React Router) — arquivos/dirs existentes passam direto
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+
+# Headers de segurança (mod_headers)
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    # CSP será definida na fase de hardening (allowlist: self, maps.google,
+    # w.soundcloud, i.imgur)
+</IfModule>
+
+Options -Indexes

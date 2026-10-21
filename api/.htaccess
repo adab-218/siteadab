@@ -1,0 +1,10 @@
+# API front controller.
+# Acesso direto a QUALQUER arquivo diferente de index.php é negado —
+# protege src/, vendor/, config.php, migrations/ e tests/.
+Options -Indexes
+
+Require all denied
+
+<Files "index.php">
+    Require all granted
+</Files>

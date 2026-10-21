@@ -1,0 +1,32 @@
+{
+  // Servidores MCP do projeto (compartilhados via git).
+  // NÃO coloque tokens/secrets aqui — use .devin/mcp_config.local.json (gitignored),
+  // que sobrescreve definições com o mesmo nome.
+  //
+  // Gerenciar via CLI:
+  //   devin mcp add <nome> -- <comando> [args...]   (stdio)
+  //   devin mcp add <nome> <URL>                    (HTTP remoto)
+  //   devin mcp list | get | remove | login | enable | disable
+  //
+  // Referência: https://docs.devin.ai/cli/extensibility/mcp/configuration
+
+  "mcpServers": {
+    // GitHub: issues, PRs e código do repositório adab-218/siteadab.
+    // Para ativar: copie este bloco para .devin/mcp_config.local.json,
+    // preencha GITHUB_TOKEN (personal access token) e remova "disabled".
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": ""
+      },
+      "disabled": true
+    }
+
+    // Exemplo de servidor remoto (OAuth — autenticar com `devin mcp login notion`):
+    // "notion": {
+    //   "url": "https://mcp.notion.com/mcp",
+    //   "transport": "http"
+    // }
+  }
+}

@@ -1,0 +1,89 @@
+name: Deploy (adab.teo.br)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Deploy só roda se o CI (job frontend + api inline aqui) passar.
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+
+      - name: Verificação completa (mesmo que o CI)
+        run: |
+          npm ci
+          npm run lint
+          npx tsc -b
+          npm run test
+          npm run build
+
+      - name: Composer (testes → deps de produção)
+        working-directory: api
+        run: |
+          composer install --prefer-dist
+          composer test
+          composer install --no-dev --optimize-autoloader --prefer-dist
+
+      - name: Gerar api/config.php a partir de secrets
+        run: |
+          cat > api/config.php <<'EOF'
+          <?php
+          return [
+              'db' => [
+                  'host' => 'localhost',
+                  'name' => 'sorte759_adab',
+                  'user' => 'sorte759_adabbd',
+                  'pass' => '__DB_PASSWORD__',
+                  'charset' => 'utf8mb4',
+              ],
+              'session_secret' => '__SESSION_SECRET__',
+              'migrate_token' => '__MIGRATE_TOKEN__',
+              'uploads_dir' => dirname(__DIR__) . '/uploads',
+              'app_url' => 'https://adab.teo.br',
+              'smtp' => null,
+          ];
+          EOF
+          sed -i "s/__DB_PASSWORD__/${{ secrets.DB_PASSWORD }}/" api/config.php
+          sed -i "s/__SESSION_SECRET__/${{ secrets.SESSION_SECRET }}/" api/config.php
+          sed -i "s/__MIGRATE_TOKEN__/${{ secrets.MIGRATE_TOKEN }}/" api/config.php
+
+      - name: Deploy via FTPS → public_html
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: ./
+          server-dir: /public_html/
+          include: |
+            +dist/**
+            +api/**
+            +uploads/.htaccess
+            +.htaccess
+          exclude: |
+            api/config.example.php
+            api/tests/**
+            api/phpunit.xml
+            api/migrate.php
+            api/create-user.php
+            api/seed.sql
+
+      - name: Rodar migrations no servidor
+        run: |
+          curl -fsS -X POST "https://adab.teo.br/api/admin/migrate" \
+            -H "X-Migrate-Token: ${{ secrets.MIGRATE_TOKEN }}"

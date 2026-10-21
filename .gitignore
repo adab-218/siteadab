@@ -23,3 +23,16 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.*
+!.env.example
+
+# Devin CLI — overrides locais e segredos
+.devin/*.local.json
+AGENTS.local.md
+
+# Backend PHP — segredos, dependências e uploads locais
+api/config.php
+api/vendor/
+uploads/*
+!uploads/.htaccess
+!uploads/.gitkeep

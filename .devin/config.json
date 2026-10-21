@@ -1,0 +1,31 @@
+{
+  // Configuração do projeto para o Devin CLI (compartilhada com a equipe via git).
+  // Overrides pessoais vão em .devin/config.local.json (gitignored).
+  // Referência: https://docs.devin.ai/cli/extensibility/configuration
+
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Exec(git status)",
+      "Exec(git diff)",
+      "Exec(git log)",
+      "Exec(git show)",
+      "Exec(npm run)",
+      "Exec(npm install)",
+      "Exec(npm ci)",
+      "Exec(npx)"
+    ],
+    "deny": [
+      "Exec(git push --force)",
+      "Exec(git reset --hard)"
+    ]
+  },
+
+  // Importar regras/config de outras ferramentas, se existirem no repo
+  "read_config_from": {
+    "agents_standard": true,
+    "cursor": true,
+    "windsurf": true,
+    "claude": true
+  }
+}

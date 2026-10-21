@@ -1,0 +1,8 @@
+# Uploads servidos estaticamente — execução de scripts PROIBIDA.
+# Esta pasta não está no git (só o .htaccess e .gitkeep): o deploy
+# cria o diretório e nunca apaga arquivos enviados em produção.
+Options -Indexes -ExecCGI
+
+<FilesMatch "(?i)\.(php|phtml|php[0-9]*|phps|phar|cgi|pl|py|rb|sh|exe)$">
+    Require all denied
+</FilesMatch>
