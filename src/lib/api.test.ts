@@ -1,3 +1,6 @@
+// @vitest-environment node
+// (este arquivo testa o client HTTP — não precisa de DOM; jsdom + undici
+// quebra em alguns runtimes de CI)
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { apiFetch, auth, ApiError, setCsrfToken } from './api';
 
