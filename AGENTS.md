@@ -38,6 +38,29 @@ dados, segurança (matriz de perfis), API, convenções e plano de ação em
 
 - `npm run lint` e `npm run build` devem passar sem erros
 - `composer test` (em `api/`) quando houver PHP/PHPUnit disponível
+- `git diff --check` limpo; sem segredos ou dados reais no diff
+
+## Equipe de agentes
+
+Subagentes especializados em `.devin/agents/` (ver `docs/TEAM_WORKFLOW.md`
+para fluxo completo, DoR/DoD e política de paralelismo):
+
+- `project-coordinator` — decomposição de tarefas e integração
+- `requirements-analyst` — escopo, regras de negócio e critérios de aceite
+- `software-architect` — contratos, camadas e decisões técnicas
+- `database-engineer` — schema, migrations e integridade
+- `php-backend-developer` — implementação da API
+- `frontend-developer` — UI e integração com contratos
+- `qa-test-engineer` — testes e evidências
+- `code-reviewer` / `reviewer` — revisão de correção e convenções
+- `security-reviewer` — auditoria independente (somente leitura)
+- `devops-release-engineer` — release, observabilidade e rollback
+
+Regras de delegação: quem implementa não aprova sozinho o próprio
+trabalho (revisão independente); dois agentes não editam o mesmo arquivo
+simultaneamente; auditorias read-only podem rodar em background;
+nenhum deploy/migração/operação em produção sem autorização humana
+explícita. Checklist de aceite: `docs/ACCEPTANCE_CHECKLIST.md`.
 
 ## Skills disponíveis
 
