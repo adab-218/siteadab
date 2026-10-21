@@ -2,7 +2,7 @@ name: Deploy (adab.teo.br)
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 
 # Deploy só roda se o CI (job frontend + api inline aqui) passar.
