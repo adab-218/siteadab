@@ -59,6 +59,15 @@ jobs:
           ];
           EOF
 
+      - name: Montar pacote de deploy
+        run: |
+          mkdir -p deploy_pkg/api deploy_pkg/uploads
+          cp -r dist/* deploy_pkg/
+          cp .htaccess deploy_pkg/
+          cp -r api/index.php api/.htaccess api/src api/vendor \
+                api/migrations api/config.php deploy_pkg/api/
+          cp uploads/.htaccess deploy_pkg/uploads/
+
       - name: Deploy via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -67,21 +76,18 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
           port: 21
-          local-dir: ./
+          local-dir: ./deploy_pkg/
           server-dir: /public_html/
-          include: |
-            dist/**
-            api/**
-            .htaccess
-          exclude: |
-            **/config.example.php
-            **/node_modules/**
-            **/.git*
 ```
 
 > Detalhes do deploy:
-> - `exclude` preserva `uploads/` e arquivos locais do servidor
->   (usar opção `dangerous-clean-slate: false` — padrão já não deleta).
+> - A action não tem `include` — montamos `deploy_pkg/` com apenas o
+>   necessário (dist + api enxuta + .htaccess + uploads/.htaccess).
+> - Arquivos no servidor fora do pacote (ex.: `uploads/*` enviados pelos
+>   usuários) são preservados — a action não deleta por padrão
+>   (`dangerous-clean-slate` fica desligado).
+> - `config.example.php`, `tests/`, CLIs e `seed.sql` ficam de fora do
+>   pacote (não vão ao servidor).
 > - Após deploy, o workflow chama `POST /api/admin/migrate` com
 >   `MIGRATE_TOKEN` para rodar migrations pendentes.
 > - CI de PR (`ci.yml`): mesmos checks, sem deploy.
