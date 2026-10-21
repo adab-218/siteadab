@@ -13,12 +13,12 @@ use Adab\Api\Middleware\PerfilMiddleware;
 use Slim\Factory\AppFactory;
 use Slim\Routing\RouteCollectorProxy;
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
 
 // ---------------------------------------------------------------------
 // Configuração
 // ---------------------------------------------------------------------
-$configFile = dirname(__DIR__) . '/config.php';
+$configFile = __DIR__ . '/config.php';
 if (!is_file($configFile)) {
     Json::emit(['error' => [
         'code' => 'CONFIG_MISSING',
