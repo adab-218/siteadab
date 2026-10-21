@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Adab\Api\Controllers;
 
 use Adab\Api\Json;
+use Adab\Api\Repositories\TentativaLoginRepository;
+use Adab\Api\Repositories\UsuarioRepository;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -15,10 +17,17 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 final class AuthController
 {
     private const MAX_TENTATIVAS = 5;
+    private const MAX_TENTATIVAS_IP = 30;
     private const JANELA_MINUTOS = 15;
+    private const DUMMY_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
 
-    public function __construct(private PDO $pdo, private array $config)
+    private UsuarioRepository $usuarios;
+    private TentativaLoginRepository $tentativas;
+
+    public function __construct(PDO $pdo, private array $config)
     {
+        $this->usuarios = new UsuarioRepository($pdo);
+        $this->tentativas = new TentativaLoginRepository($pdo);
     }
 
     public function login(Request $request, Response $response): Response
@@ -32,29 +41,26 @@ final class AuthController
         }
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        if ($this->bloqueadoPorRateLimit($email, $ip)) {
+        if ($this->bloqueadoPorRateLimit($email, $ip) || $this->bloqueadoPorIp($ip)) {
             return Json::erro($response, 'RATE_LIMIT',
                 'Muitas tentativas. Aguarde ' . self::JANELA_MINUTOS . ' minutos.', 429);
         }
 
-        $stmt = $this->pdo->prepare(
-            'SELECT u.id, u.pessoa_id, u.email, u.senha_hash, u.perfil, u.ativo, p.nome_completo
-               FROM usuarios u
-               JOIN pessoas p ON p.id = u.pessoa_id
-              WHERE u.email = :email
-              LIMIT 1'
-        );
-        $stmt->execute(['email' => $email]);
-        $usuario = $stmt->fetch();
+        $usuario = $this->usuarios->buscarPorEmail($email);
 
-        if (!$usuario || !$usuario['ativo'] || !password_verify($senha, $usuario['senha_hash'])) {
+        // Hash dummy quando usuário não existe — paridade de tempo
+        // para não revelar se o e-mail está cadastrado.
+        $senhaOk = $usuario
+            ? password_verify($senha, $usuario['senha_hash'])
+            : password_verify($senha, self::DUMMY_HASH) && false;
+
+        if (!$usuario || !$usuario['ativo'] || !$senhaOk) {
             $this->registrarTentativa($email, $ip);
             return Json::erro($response, 'CREDENCIAIS', 'E-mail ou senha inválidos.', 401);
         }
 
         $this->limparTentativas($email, $ip);
-        $this->pdo->prepare('UPDATE usuarios SET ultimo_login_em = NOW() WHERE id = ?')
-                  ->execute([$usuario['id']]);
+        $this->usuarios->registrarLogin((int) $usuario['id']);
 
         session_regenerate_id(true);
         $csrf = bin2hex(random_bytes(32));
@@ -78,7 +84,14 @@ final class AuthController
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {
             $p = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
+            setcookie(session_name(), '', [
+                'expires' => time() - 42000,
+                'path' => $p['path'],
+                'domain' => $p['domain'],
+                'secure' => $p['secure'],
+                'httponly' => $p['httponly'],
+                'samesite' => $p['samesite'],
+            ]);
         }
         session_destroy();
         return Json::resposta($response, ['data' => ['ok' => true]]);
@@ -99,15 +112,18 @@ final class AuthController
     {
         $body = (array) $request->getParsedBody();
         $email = trim((string) ($body['email'] ?? ''));
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+        if ($this->bloqueadoPorRateLimit($email, $ip) || $this->bloqueadoPorIp($ip)) {
+            return Json::erro($response, 'RATE_LIMIT',
+                'Muitas tentativas. Aguarde ' . self::JANELA_MINUTOS . ' minutos.', 429);
+        }
 
         if ($email !== '') {
-            $stmt = $this->pdo->prepare('SELECT id FROM usuarios WHERE email = ? AND ativo = 1');
-            $stmt->execute([$email]);
-            if ($id = $stmt->fetchColumn()) {
+            $this->registrarTentativa($email, $ip);
+            if ($id = $this->usuarios->idAtivoPorEmail($email)) {
                 $token = bin2hex(random_bytes(32));
-                $this->pdo->prepare(
-                    'UPDATE usuarios SET reset_token = ?, reset_expira = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?'
-                )->execute([$token, $id]);
+                $this->usuarios->definirResetToken($id, hash('sha256', $token));
                 $this->enviarEmailRecuperacao($email, $token);
             }
         }
@@ -128,14 +144,12 @@ final class AuthController
             return Json::erro($response, 'VALIDACAO', 'Token inválido ou senha menor que 10 caracteres.', 400);
         }
 
-        $stmt = $this->pdo->prepare(
-            'UPDATE usuarios
-                SET senha_hash = ?, reset_token = NULL, reset_expira = NULL
-              WHERE reset_token = ? AND reset_expira > NOW()'
+        $ok = $this->usuarios->consumirResetToken(
+            hash('sha256', $token),
+            password_hash($senha, PASSWORD_DEFAULT)
         );
-        $stmt->execute([password_hash($senha, PASSWORD_DEFAULT), $token]);
 
-        if ($stmt->rowCount() === 0) {
+        if (!$ok) {
             return Json::erro($response, 'TOKEN_INVALIDO', 'Token inválido ou expirado.', 400);
         }
         return Json::resposta($response, ['data' => ['ok' => true]]);
@@ -145,32 +159,42 @@ final class AuthController
 
     private function bloqueadoPorRateLimit(string $email, string $ip): bool
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT COUNT(*) FROM login_tentativas
-              WHERE email = :email AND ip = :ip
-                AND criado_em > DATE_SUB(NOW(), INTERVAL ' . self::JANELA_MINUTOS . ' MINUTE)'
-        );
-        $stmt->execute(['email' => $email, 'ip' => $ip]);
-        return (int) $stmt->fetchColumn() >= self::MAX_TENTATIVAS;
+        return $this->tentativas->contarPorEmailEIp(
+            $this->hashEmail($email), $ip, self::JANELA_MINUTOS
+        ) >= self::MAX_TENTATIVAS;
+    }
+
+    private function bloqueadoPorIp(string $ip): bool
+    {
+        return $this->tentativas->contarPorIp($ip, self::JANELA_MINUTOS)
+            >= self::MAX_TENTATIVAS_IP;
     }
 
     private function registrarTentativa(string $email, string $ip): void
     {
-        $this->pdo->prepare('INSERT INTO login_tentativas (email, ip) VALUES (?, ?)')
-                  ->execute([$email, $ip]);
+        $this->tentativas->registrar($this->hashEmail($email), $ip);
+        // Purge probabilístico (~5%) de linhas antigas — mantém a tabela pequena
+        if (random_int(1, 20) === 1) {
+            $this->tentativas->purgarAntigas();
+        }
     }
 
     private function limparTentativas(string $email, string $ip): void
     {
-        $this->pdo->prepare('DELETE FROM login_tentativas WHERE email = ? AND ip = ?')
-                  ->execute([$email, $ip]);
+        $this->tentativas->limpar($this->hashEmail($email), $ip);
+    }
+
+    private function hashEmail(string $email): string
+    {
+        return hash('sha256', strtolower(trim($email)));
     }
 
     private function enviarEmailRecuperacao(string $email, string $token): void
     {
         $smtp = $this->config['smtp'] ?? null;
         if (!$smtp) {
-            error_log("[adab-api] SMTP não configurado — reset token para {$email}: {$token}");
+            // Nunca logar o token — equivale a uma credencial válida por 1h.
+            error_log("[adab-api] SMTP não configurado — e-mail de recuperação NÃO enviado para {$email}");
             return;
         }
 

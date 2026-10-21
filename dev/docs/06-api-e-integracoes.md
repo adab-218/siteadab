@@ -2,7 +2,7 @@
 
 ## Estilo
 
-REST JSON sob `/api`, servido pelo Slim 4 (`api/public/index.php`).
+REST JSON sob `/api`, servido pelo Slim 4 (`api/index.php`).
 Convenções:
 
 - Respostas: `{ "data": ... }` ou `{ "error": { "code", "message" } }`

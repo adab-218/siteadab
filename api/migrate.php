@@ -40,8 +40,12 @@ if ($aplicadas === []) {
     echo "Aplicadas:\n - " . implode("\n - ", $aplicadas) . "\n";
 }
 
-// Seed (dev)
+// Seed (dev) — bloqueado em produção: contém senhas conhecidas.
 if (in_array('--seed', $argv, true)) {
+    if (($config['env'] ?? 'prod') !== 'dev') {
+        fwrite(STDERR, "Seed recusado: config['env'] não é 'dev' — seed.sql contém credenciais de teste.\n");
+        exit(1);
+    }
     $seedFile = __DIR__ . '/seed.sql';
     $sql = file_get_contents($seedFile);
     if ($sql === false) {
@@ -52,8 +56,15 @@ if (in_array('--seed', $argv, true)) {
         array_map('trim', preg_split('/;\s*[\r\n]+/', $sql) ?: []),
         fn($s) => $s !== '' && !str_starts_with($s, '--')
     );
+    $i = 0;
     foreach ($statements as $stmt) {
-        $pdo->exec($stmt);
+        $i++;
+        try {
+            $pdo->exec($stmt);
+        } catch (PDOException $e) {
+            fwrite(STDERR, "seed.sql falhou no statement #{$i}: {$e->getMessage()}\n");
+            exit(1);
+        }
     }
     echo "seed.sql aplicado.\n";
 }

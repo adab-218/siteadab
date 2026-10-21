@@ -56,7 +56,7 @@ const DepartmentCard: React.FC<DepartmentCard> = ({ name, description, icon }) =
   </div>
 );
 
-function App() {
+const App: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [prayerTopic, setPrayerTopic] = useState('');
@@ -141,6 +141,9 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
           <button 
             className="lg:hidden text-gray-700 hover:text-red-600 transition-colors"
             onClick={toggleMenu}
+            aria-label={isMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={isMenuOpen}
+            aria-controls="menu-mobile"
           >
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -148,7 +151,7 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="lg:hidden bg-white border-t">
+          <div id="menu-mobile" className="lg:hidden bg-white border-t">
             <nav className="container mx-auto px-4 py-4 space-y-4">
               <MenuItem href="#inicio" onClick={closeMenu}>Início</MenuItem>
               <MenuItem href="#programacao" onClick={closeMenu}>Programação</MenuItem>
@@ -560,6 +563,6 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
       )}
     </div>
   );
-}
+};
 
 export default App;

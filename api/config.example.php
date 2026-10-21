@@ -6,6 +6,10 @@
 // Este arquivo NÃO deve conter segredos reais.
 
 return [
+    // Ambiente: 'dev' habilita migrate.php --seed e pode afrouxar
+    // validações futuras. O deploy gera 'prod'.
+    'env' => 'dev',
+
     'db' => [
         'host' => 'localhost',
         'name' => 'adab_dev',        // prod: sorte759_adab
@@ -17,6 +21,11 @@ return [
     // Segredo para assinar dados de sessão/CSRF. Gerar com:
     //   php -r "echo bin2hex(random_bytes(32));"
     'session_secret' => 'TROCAR-por-string-aleatoria-longa',
+
+    // Diretório de sessões fora do docroot (recomendado em shared hosting).
+    // null = save_path padrão do PHP.
+    'session_save_path' => null,
+    // 'session_save_path' => dirname(__DIR__, 2) . '/adab_sessions',
 
     // Token que autoriza POST /api/admin/migrate sem login (deploy).
     'migrate_token' => 'TROCAR-por-token-aleatorio',

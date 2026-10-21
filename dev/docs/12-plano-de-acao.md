@@ -5,10 +5,13 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 
 ## Fase 0 — Fundação e débitos técnicos
 
-- [x] Confirmar versão do PHP no cPanel — **PHP 8.3 (ea-php83)** disponível;
-      falta ativar SSL (AutoSSL) para adab.teo.br
-- [ ] Criar GitHub Secrets: `FTP_SERVER`, `FTP_USERNAME`,
+- [x] Confirmar versão do PHP no cPanel — **PHP 8.3 (ea-php83)**;
+      SSL (AutoSSL) ativo para adab.teo.br ✅
+- [x] GitHub Secrets criados: `FTP_SERVER`, `FTP_USERNAME`,
       `FTP_PASSWORD`, `DB_PASSWORD`, `SESSION_SECRET`, `MIGRATE_TOKEN`
+- [x] Deploy em produção funcionando (FTPS → adab.teo.br + migrate)
+- [x] **Revisão completa da equipe de agentes (10 pareceres)** —
+      correções consolidadas em `dev/docs/CHECKLIST.md`
 - [x] Corrigir lint: `typescript-eslint` atualizado para ^8.46 (compatível com eslint 9.34)
 - [x] Corrigir `z-60` inválido (`z-[60]`) e bug de data UTC em `WeeklySchedule`
 - [x] `lang="pt-BR"` + meta description no `index.html` (og tags pendente)

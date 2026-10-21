@@ -117,9 +117,10 @@ Header always set Referrer-Policy "strict-origin-when-cross-origin"
 ## Backup
 
 - cPanel → Backup (full) semanal, com cópia baixada para fora do servidor.
-- Cron do cPanel: `php -f $HOME/cron/backup_db.php` diário →
-  `mysqldump` compactado em pasta fora de `public_html` +
-  retenção de 14 dias.
+- ⚠️ **Pendente (CHECKLIST OPS.3):** o script `cron/backup_db.php` ainda
+  NÃO existe no repositório — o cron abaixo é o alvo, não o estado atual.
+  Implementar `mysqldump` compactado em pasta fora de `public_html` +
+  retenção de 14 dias e agendar `php -f $HOME/cron/backup_db.php` diário.
 - Teste de restore 1× por trimestre.
 
 ## Operação contínua

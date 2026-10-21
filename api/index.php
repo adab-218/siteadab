@@ -30,23 +30,50 @@ if (!is_file($configFile)) {
 $config = require $configFile;
 
 // ---------------------------------------------------------------------
-// Sessão (cookie httpOnly + SameSite; Secure apenas sob HTTPS)
+// Sessão — somente onde é necessária (rotas /auth, /admin e protegidas).
+// /api/health e /api/public/* não criam sessão nem Set-Cookie.
 // ---------------------------------------------------------------------
-$https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-session_name('adab_sid');
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path' => '/',
-    'httponly' => true,
-    'samesite' => 'Lax',
-    'secure' => $https,
-]);
-session_start();
+$https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$precisaSessao = $requestPath !== '/api/health'
+    && !str_starts_with($requestPath, '/api/public');
+
+if ($precisaSessao) {
+    $savePath = $config['session_save_path'] ?? null;
+    if (is_string($savePath) && $savePath !== '') {
+        if (!is_dir($savePath)) {
+            @mkdir($savePath, 0700, true);
+        }
+        if (is_dir($savePath)) {
+            session_save_path($savePath);
+        }
+    }
+    session_name('adab_sid');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => $https,
+    ]);
+    session_start();
+}
 
 // ---------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------
-$pdo = Database::pdo($config['db']);
+try {
+    $pdo = Database::pdo($config['db'] ?? []);
+} catch (Throwable $e) {
+    error_log('[adab-api] bootstrap: ' . $e->getMessage());
+    Json::emit(['error' => [
+        'code' => 'INDISPONIVEL',
+        'message' => 'Serviço indisponível no momento.',
+    ]], 503);
+}
+
 $app = AppFactory::create();
 $app->setBasePath('/api');
 $app->addBodyParsingMiddleware();
@@ -58,7 +85,7 @@ $app->group('/auth', function (RouteCollectorProxy $g) use ($pdo, $config) {
     $auth = new AuthController($pdo, $config);
     $g->post('/login', [$auth, 'login']);
     $g->post('/logout', [$auth, 'logout']);
-    $g->get('/me', [$auth, 'me'])->add(new AuthMiddleware());
+    $g->get('/me', [$auth, 'me'])->add(new AuthMiddleware($pdo));
     $g->post('/recuperar', [$auth, 'recuperar']);
     $g->post('/redefinir', [$auth, 'redefinir']);
 });
@@ -70,19 +97,18 @@ $app->group('/public', function (RouteCollectorProxy $g) use ($pdo) {
     $g->get('/eventos', [$pub, 'eventos']);
 });
 
-// Admin
+// Admin — POST /migrate: sessão admin OU X-Migrate-Token (deploy)
 $app->group('/admin', function (RouteCollectorProxy $g) use ($pdo, $config) {
     $admin = new AdminController($pdo, $config);
-    // No Slim, o último middleware adicionado executa primeiro:
-    // token migração OU sessão admin são verificados dentro da rota.
     $g->post('/migrate', [$admin, 'migrate']);
 });
 
-// CSRF em mutações autenticadas (rotas futuras entram neste grupo)
+// Rotas autenticadas: TODA rota de módulo deve ser registrada neste
+// grupo (CSRF + Auth aplicados na ordem correta pelo encadeamento).
 $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
     // Módulos serão registrados aqui, ex.:
     // $g->group('/membros', ...)  ->add(PerfilMiddleware::para([...]))
-})->add(new CsrfMiddleware())->add(new AuthMiddleware());
+})->add(new CsrfMiddleware())->add(new AuthMiddleware($pdo));
 
 // ---------------------------------------------------------------------
 // Erros — sempre JSON
@@ -94,10 +120,18 @@ $errorMiddleware->setDefaultErrorHandler(function ($request, Throwable $e) use (
         $status = $e->getCode() ?: 500;
     }
     error_log('[adab-api] ' . $e->getMessage());
+
+    $codigos = [
+        400 => ['REQUISICAO_INVALIDA', 'Requisição inválida.'],
+        404 => ['NOT_FOUND', 'Rota não encontrada.'],
+        405 => ['METODO_NAO_PERMITIDO', 'Método não permitido.'],
+    ];
+    [$code, $message] = $codigos[$status] ?? ['ERRO_INTERNO', 'Erro interno do servidor.'];
+
     $response = $app->getResponseFactory()->createResponse();
     return Json::resposta($response, ['error' => [
-        'code' => $status === 404 ? 'NOT_FOUND' : 'ERRO_INTERNO',
-        'message' => $status === 404 ? 'Rota não encontrada.' : 'Erro interno do servidor.',
+        'code' => $code,
+        'message' => $message,
     ]], $status);
 });
 

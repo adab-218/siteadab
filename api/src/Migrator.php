@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Adab\Api;
 
 use PDO;
+use PDOException;
 use RuntimeException;
 
 /**
@@ -12,11 +13,23 @@ use RuntimeException;
  * registrando as aplicadas na tabela `migrations`.
  *
  * Usado tanto por POST /api/admin/migrate quanto por `php migrate.php`.
- * As migrations devem conter apenas DDL/DML simples (sem DELIMITER,
- * procedures ou triggers) — os arquivos são divididos em ";" ao fim de linha.
+ *
+ * Convenções para novas migrations:
+ *  - statements separados por ";" ao fim de linha (sem DELIMITER,
+ *    procedures ou triggers — o split é por ponto-e-vírgula);
+ *  - preferir formas idempotentes (CREATE TABLE IF NOT EXISTS,
+ *    CREATE OR REPLACE VIEW, INSERT ... ON DUPLICATE KEY) para que
+ *    uma falha no meio do arquivo possa ser re-executada com segurança;
+ *  - ALTERs não são idempotentes — verificar no banco antes de re-rodar
+ *    uma migration que falhou parcialmente (ver dev/docs/11).
+ *
+ * Lock: GET_LOCK impede execuções concorrentes (deploy + admin).
  */
 final class Migrator
 {
+    private const LOCK_NAME = 'adab_migrator';
+    private const LOCK_TIMEOUT = 15;
+
     public function __construct(private PDO $pdo, private string $dir)
     {
     }
@@ -25,22 +38,36 @@ final class Migrator
     public function run(): array
     {
         $this->garantirTabelaControle();
+        $this->obterLock();
 
-        $aplicadas = $this->pdo->query('SELECT arquivo FROM migrations')
-                               ->fetchAll(PDO::FETCH_COLUMN);
-        $arquivos = glob($this->dir . '/*.sql') ?: [];
-        sort($arquivos);
+        try {
+            $aplicadas = $this->pdo->query('SELECT arquivo FROM migrations')
+                                   ->fetchAll(PDO::FETCH_COLUMN);
+            $arquivos = glob($this->dir . '/*.sql') ?: [];
+            sort($arquivos);
 
-        $novas = [];
-        foreach ($arquivos as $arquivo) {
-            $nome = basename($arquivo);
-            if (in_array($nome, $aplicadas, true)) {
-                continue;
+            $novas = [];
+            foreach ($arquivos as $arquivo) {
+                $nome = basename($arquivo);
+                if (in_array($nome, $aplicadas, true)) {
+                    continue;
+                }
+                $this->aplicar($arquivo, $nome);
+                $novas[] = $nome;
             }
-            $this->aplicar($arquivo, $nome);
-            $novas[] = $nome;
+            return $novas;
+        } finally {
+            $this->pdo->query('SELECT RELEASE_LOCK(' . $this->pdo->quote(self::LOCK_NAME) . ')');
         }
-        return $novas;
+    }
+
+    private function obterLock(): void
+    {
+        $stmt = $this->pdo->prepare('SELECT GET_LOCK(?, ?)');
+        $stmt->execute([self::LOCK_NAME, self::LOCK_TIMEOUT]);
+        if ((int) $stmt->fetchColumn() !== 1) {
+            throw new RuntimeException('Não foi possível obter o lock de migração (outra execução em andamento?).');
+        }
     }
 
     private function garantirTabelaControle(): void
@@ -67,8 +94,18 @@ final class Migrator
             fn($s) => $s !== ''
         );
 
+        $i = 0;
         foreach ($statements as $stmt) {
-            $this->pdo->exec($stmt);
+            $i++;
+            try {
+                $this->pdo->exec($stmt);
+            } catch (PDOException $e) {
+                throw new RuntimeException(
+                    "{$nome} falhou no statement #{$i} (banco pode estar parcialmente aplicado — ver dev/docs/11): {$e->getMessage()}",
+                    0,
+                    $e
+                );
+            }
         }
 
         $this->pdo->prepare('INSERT INTO migrations (arquivo) VALUES (?)')

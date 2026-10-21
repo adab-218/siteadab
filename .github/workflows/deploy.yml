@@ -9,6 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -20,7 +21,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: pdo_mysql
+          extensions: pdo_mysql, pdo_sqlite
 
       - name: Verificação completa (mesmo que o CI)
         run: |
@@ -38,27 +39,45 @@ jobs:
           composer install --no-dev --optimize-autoloader --prefer-dist
 
       - name: Gerar api/config.php a partir de secrets
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          MIGRATE_TOKEN: ${{ secrets.MIGRATE_TOKEN }}
         run: |
           cat > api/config.php <<'EOF'
           <?php
           return [
+              'env' => 'prod',
               'db' => [
                   'host' => 'localhost',
                   'name' => 'sorte759_adab',
                   'user' => 'sorte759_adabbd',
-                  'pass' => '__DB_PASSWORD__',
+                  'pass' => __DB_PASSWORD__,
                   'charset' => 'utf8mb4',
               ],
-              'session_secret' => '__SESSION_SECRET__',
-              'migrate_token' => '__MIGRATE_TOKEN__',
+              'session_secret' => __SESSION_SECRET__,
+              'session_save_path' => dirname(__DIR__, 2) . '/adab_sessions',
+              'migrate_token' => __MIGRATE_TOKEN__,
               'uploads_dir' => dirname(__DIR__) . '/uploads',
               'app_url' => 'https://adab.teo.br',
               'smtp' => null,
           ];
           EOF
-          sed -i "s/__DB_PASSWORD__/${{ secrets.DB_PASSWORD }}/" api/config.php
-          sed -i "s/__SESSION_SECRET__/${{ secrets.SESSION_SECRET }}/" api/config.php
-          sed -i "s/__MIGRATE_TOKEN__/${{ secrets.MIGRATE_TOKEN }}/" api/config.php
+          # Substituição via var_export — secrets com /, &, ', \ são escapados
+          # corretamente (sed quebraria o arquivo ou geraria PHP inválido).
+          php -r '
+          $c = file_get_contents("api/config.php");
+          foreach (["DB_PASSWORD", "SESSION_SECRET", "MIGRATE_TOKEN"] as $k) {
+              $v = getenv($k);
+              if ($v === false || $v === "") {
+                  fwrite(STDERR, "Secret {$k} ausente ou vazio\n");
+                  exit(1);
+              }
+              $c = str_replace("__{$k}__", var_export($v, true), $c);
+          }
+          file_put_contents("api/config.php", $c);
+          '
+          php -l api/config.php
 
       - name: Montar pacote de deploy (somente arquivos necessários)
         run: |
@@ -82,11 +101,26 @@ jobs:
           exclude: |
             **/.git*
 
-      - name: Rodar migrations no servidor
+      - name: Rodar migrations no servidor (com retry)
         run: |
-          curl -fsS -X POST "https://adab.teo.br/api/admin/migrate" \
-            -H "X-Migrate-Token: ${{ secrets.MIGRATE_TOKEN }}" \
-            -H "User-Agent: adab-deploy" \
-            -H "Accept: application/json" \
-            -H "Content-Type: application/json" \
-            -d '{}'
+          for i in 1 2 3 4 5; do
+            if curl -fsS -X POST "https://adab.teo.br/api/admin/migrate" \
+              -H "X-Migrate-Token: ${{ secrets.MIGRATE_TOKEN }}" \
+              -H "User-Agent: adab-deploy" \
+              -H "Accept: application/json" \
+              -H "Content-Type: application/json" \
+              -d '{}'; then
+              exit 0
+            fi
+            echo "tentativa $i falhou — aguardando 5s"; sleep 5
+          done
+          echo "Migrate falhou após 5 tentativas"; exit 1
+
+      - name: Smoke test pós-deploy
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://adab.teo.br/)
+            [ "$code" = "200" ] && break || sleep 5
+          done
+          [ "$code" = "200" ] || { echo "Site não respondeu 200 (HTTP $code)"; exit 1; }
+          curl -fsS https://adab.teo.br/api/health -H "Accept: application/json"

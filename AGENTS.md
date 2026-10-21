@@ -31,7 +31,10 @@ dados, segurança (matriz de perfis), API, convenções e plano de ação em
   com prepared statements; autorização via `AuthMiddleware`/`PerfilMiddleware`
   — nunca confiar em filtro do front
 - Identidade visual: vermelho (`red-600`/`red-700`) como cor primária
-- Schema novo/alterado exige migration em `api/migrations/` (NNNN_*.sql)
+- Schema novo/alterado exige migration em `api/migrations/` (NNNN_*.sql);
+  preferir formas idempotentes (`CREATE TABLE IF NOT EXISTS`, `CREATE OR
+  REPLACE VIEW`, `INSERT ... ON DUPLICATE KEY`) — statements separados
+  por `;` ao fim de linha, sem `DELIMITER`/procedures/triggers
 - Nunca commitar `api/config.php`, `.env*`, conteúdo de `uploads/`
 
 ## Verificação antes de concluir

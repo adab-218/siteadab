@@ -13,8 +13,14 @@ final class Json
 {
     public static function resposta(Response $res, array $payload, int $status = 200): Response
     {
-        $res->getBody()->write(json_encode($payload, JSON_UNESCAPED_UNICODE));
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            $json = '{"error":{"code":"ERRO_INTERNO","message":"Erro ao serializar resposta."}}';
+            $status = 500;
+        }
+        $res->getBody()->write($json);
         return $res->withHeader('Content-Type', 'application/json; charset=utf-8')
+                   ->withHeader('Cache-Control', 'no-store')
                    ->withStatus($status);
     }
 
@@ -23,6 +29,7 @@ final class Json
     {
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
         echo json_encode($payload, JSON_UNESCAPED_UNICODE);
         exit;
     }

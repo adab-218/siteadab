@@ -47,7 +47,9 @@ cd api && composer install && cp config.example.php config.php  # editar
 php api/migrate.php            # aplica api/migrations/*.sql
 
 npm run dev                    # front :5173 (proxy /api → :8080)
-php -S localhost:8080 -t api api/index.php   # API :8080 (index.php como router)
+php -S localhost:8080 api/index.php   # API :8080 — index.php como router
+# (o router embutido repassa /api/* ao front controller; rode a partir
+#  da pasta api/ OU de qualquer diretório apontando o caminho completo)
 ```
 
 ## Scripts
@@ -58,7 +60,7 @@ php -S localhost:8080 -t api api/index.php   # API :8080 (index.php como router)
 | `composer test` (api/) | PHPUnit |
 | `php api/migrate.php [--seed]` | aplica migrations pendentes (+seed dev) |
 | `php api/create-user.php <pessoa_id> <email> <senha> <perfil>` | cria usuário |
-| `php -S localhost:8080 -t api api/index.php` | API local |
+| `php -S localhost:8080 api/index.php` | API local |
 
 ## Ambientes
 

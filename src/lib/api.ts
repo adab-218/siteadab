@@ -75,6 +75,20 @@ export const auth = {
     setCsrfToken(data.csrf);
     return data.usuario;
   },
+
+  async recuperar(email: string) {
+    return apiFetch<{ mensagem: string }>('/auth/recuperar', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async redefinir(token: string, senha: string) {
+    return apiFetch<{ ok: true }>('/auth/redefinir', {
+      method: 'POST',
+      body: JSON.stringify({ token, senha }),
+    });
+  },
 };
 
 // ---------------------------------------------------------------------
@@ -89,7 +103,18 @@ export interface ItemProgramacao {
   categoria: string;
 }
 
+export interface EventoPublico {
+  id: number;
+  nome: string;
+  tipo: string;
+  data_inicio: string;
+  data_fim: string | null;
+  local: string | null;
+  descricao: string | null;
+  banner_url: string | null;
+}
+
 export const publicApi = {
   programacao: () => apiFetch<ItemProgramacao[]>('/public/programacao'),
-  eventos: () => apiFetch<unknown[]>('/public/eventos'),
+  eventos: () => apiFetch<EventoPublico[]>('/public/eventos'),
 };
