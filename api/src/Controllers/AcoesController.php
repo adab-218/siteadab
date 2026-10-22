@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Adab\Api\Controllers;
 
 use Adab\Api\Json;
+use Adab\Api\Validacao;
 use Adab\Api\Repositories\AcaoRepository;
+use Adab\Api\Repositories\DepartamentoRepository;
 use Adab\Api\Repositories\UsuarioRepository;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -20,11 +22,13 @@ final class AcoesController
 {
     private AcaoRepository $acoes;
     private UsuarioRepository $usuarios; // pessoaExiste
+    private DepartamentoRepository $deptos;
 
     public function __construct(PDO $pdo)
     {
         $this->acoes = new AcaoRepository($pdo);
         $this->usuarios = new UsuarioRepository($pdo);
+        $this->deptos = new DepartamentoRepository($pdo);
     }
 
     public function listar(Request $request, Response $response): Response
@@ -138,6 +142,9 @@ final class AcoesController
         if (trim((string) ($b['nome'] ?? '')) === '') {
             return Json::erro($response, 'VALIDACAO', 'nome é obrigatório.', 400);
         }
+        if (!Validacao::maxLen($b['nome'], 200) || !Validacao::maxLen($b['contato'] ?? '', 120)) {
+            return Json::erro($response, 'VALIDACAO', 'nome até 200 / contato até 120 caracteres.', 400);
+        }
         $bid = $this->acoes->criarBeneficiario($id, [
             'nome' => trim((string) $b['nome']),
             'contato' => trim((string) ($b['contato'] ?? '')) ?: null,
@@ -152,7 +159,7 @@ final class AcoesController
         if (!$this->acoes->buscar($id)) {
             return Json::erro($response, 'NAO_ENCONTRADO', 'Ação não encontrada.', 404);
         }
-        $this->acoes->removerBeneficiario((int) $args['bid']);
+        $this->acoes->removerBeneficiario($id, (int) $args['bid']);
         return Json::resposta($response, ['data' => $this->acoes->listarBeneficiarios($id)]);
     }
 
@@ -165,7 +172,12 @@ final class AcoesController
         if (!$parcial || array_key_exists('nome', $b)) {
             if (trim((string) ($b['nome'] ?? '')) === '') {
                 $erros[] = 'nome é obrigatório.';
+            } elseif (!Validacao::maxLen($b['nome'], 160)) {
+                $erros[] = 'nome deve ter até 160 caracteres.';
             }
+        }
+        if (!empty($b['departamento_id']) && !$this->deptos->buscar((int) $b['departamento_id'])) {
+            $erros[] = 'departamento_id inexistente.';
         }
         if (isset($b['tipo']) && !in_array($b['tipo'], AcaoRepository::TIPOS, true)) {
             $erros[] = 'tipo inválido.';
@@ -207,7 +219,6 @@ final class AcoesController
 
     private function dataOuNull(mixed $v): ?string
     {
-        $v = trim((string) $v);
-        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
+        return Validacao::data($v);
     }
 }

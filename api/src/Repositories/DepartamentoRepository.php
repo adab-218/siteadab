@@ -42,7 +42,10 @@ final class DepartamentoRepository
             'SELECT d.id, d.nome, d.descricao, d.lider_id,
                     pl.nome_completo AS lider_nome, d.ativo,
                     (SELECT COUNT(*) FROM membro_departamentos md
-                      WHERE md.departamento_id = d.id AND md.data_fim IS NULL) AS total_membros
+                      WHERE md.departamento_id = d.id AND md.data_fim IS NULL
+                        AND EXISTS (SELECT 1 FROM membros mx
+                                     WHERE mx.pessoa_id = md.pessoa_id AND mx.deleted_at IS NULL)
+                    ) AS total_membros
                FROM departamentos d
                LEFT JOIN pessoas pl ON pl.id = d.lider_id
               WHERE ' . implode(' AND ', $where) . '
@@ -58,7 +61,10 @@ final class DepartamentoRepository
             'SELECT d.id, d.nome, d.descricao, d.lider_id,
                     pl.nome_completo AS lider_nome, d.ativo,
                     (SELECT COUNT(*) FROM membro_departamentos md
-                      WHERE md.departamento_id = d.id AND md.data_fim IS NULL) AS total_membros
+                      WHERE md.departamento_id = d.id AND md.data_fim IS NULL
+                        AND EXISTS (SELECT 1 FROM membros mx
+                                     WHERE mx.pessoa_id = md.pessoa_id AND mx.deleted_at IS NULL)
+                    ) AS total_membros
                FROM departamentos d
                LEFT JOIN pessoas pl ON pl.id = d.lider_id
               WHERE d.id = ?'
@@ -75,6 +81,7 @@ final class DepartamentoRepository
             'SELECT md.pessoa_id, p.nome_completo, md.funcao, md.data_inicio
                FROM membro_departamentos md
                JOIN pessoas p ON p.id = md.pessoa_id
+               JOIN membros mx ON mx.pessoa_id = md.pessoa_id AND mx.deleted_at IS NULL
               WHERE md.departamento_id = ? AND md.data_fim IS NULL
               ORDER BY p.nome_completo'
         );
@@ -117,17 +124,21 @@ final class DepartamentoRepository
     public function contarMembrosAtivos(int $id): int
     {
         $stmt = $this->pdo->prepare(
-            'SELECT COUNT(*) FROM membro_departamentos
-              WHERE departamento_id = ? AND data_fim IS NULL'
+            'SELECT COUNT(*) FROM membro_departamentos md
+              WHERE departamento_id = ? AND data_fim IS NULL
+                AND EXISTS (SELECT 1 FROM membros mx
+                             WHERE mx.pessoa_id = md.pessoa_id AND mx.deleted_at IS NULL)'
         );
         $stmt->execute([$id]);
         return (int) $stmt->fetchColumn();
     }
 
+    /** D6: "membro" em vínculos/escalas = status ativo e não excluído. */
     public function pessoaEhMembro(int $pessoaId): bool
     {
         $stmt = $this->pdo->prepare(
-            'SELECT COUNT(*) FROM membros WHERE pessoa_id = ? AND deleted_at IS NULL'
+            "SELECT COUNT(*) FROM membros
+              WHERE pessoa_id = ? AND deleted_at IS NULL AND status = 'ativo'"
         );
         $stmt->execute([$pessoaId]);
         return (int) $stmt->fetchColumn() > 0;

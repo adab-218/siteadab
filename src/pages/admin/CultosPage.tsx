@@ -27,6 +27,46 @@ const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'
 const CULTO_VAZIO: CultoPayload = { tipo_culto_id: 0, data: '' };
 
 /**
+ * Picker de membro (dirigente/pregador) — nível de módulo: definido
+ * dentro do componente, remontava a cada tecla e o input perdia o foco.
+ */
+const PessoaPicker: React.FC<{
+  label: string;
+  valor: string;
+  resultados: MembroListItem[];
+  onFocus: () => void;
+  onBuscar: (v: string) => void;
+  onSelecionar: (m: MembroListItem) => void;
+}> = ({ label, valor, resultados, onFocus, onBuscar, onSelecionar }) => (
+  <div className="relative">
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <input
+      type="search"
+      placeholder="Buscar membro ativo…"
+      value={valor}
+      onFocus={onFocus}
+      onChange={(e) => onBuscar(e.target.value)}
+      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+    />
+    {resultados.length > 0 && (
+      <ul className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-auto">
+        {resultados.map((m) => (
+          <li key={m.pessoa_id}>
+            <button
+              type="button"
+              onClick={() => onSelecionar(m)}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-red-50"
+            >
+              {m.nome_completo}
+            </button>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+);
+
+/**
  * M3 — Cultos: agenda + totais de presença + gestão de tipos.
  */
 const CultosPage: React.FC = () => {
@@ -276,39 +316,18 @@ const CultosPage: React.FC = () => {
     }
   };
 
-  const PessoaPicker = ({ campo, label }: { campo: 'dirigente' | 'pregador'; label: string }) => (
-    <div className="relative">
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <input
-        type="search"
-        placeholder="Buscar membro ativo…"
-        value={campoPessoa === campo ? buscaPessoa : nomes[campo]}
-        onFocus={() => { setCampoPessoa(campo); setBuscaPessoa(''); }}
-        onChange={(e) => setBuscaPessoa(e.target.value)}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-      />
-      {campoPessoa === campo && resultadosPessoa.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-auto">
-          {resultadosPessoa.map((m) => (
-            <li key={m.pessoa_id}>
-              <button
-                type="button"
-                onClick={() => {
-                  setCulto((c) => ({ ...c, [`${campo}_id`]: m.pessoa_id }));
-                  setNomes((n) => ({ ...n, [campo]: m.nome_completo }));
-                  setCampoPessoa(null);
-                  setResultadosPessoa([]);
-                }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-red-50"
-              >
-                {m.nome_completo}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+  const pickerProps = (campo: 'dirigente' | 'pregador') => ({
+    valor: campoPessoa === campo ? buscaPessoa : nomes[campo],
+    resultados: campoPessoa === campo ? resultadosPessoa : [],
+    onFocus: () => { setCampoPessoa(campo); setBuscaPessoa(''); },
+    onBuscar: setBuscaPessoa,
+    onSelecionar: (m: MembroListItem) => {
+      setCulto((c) => ({ ...c, [`${campo}_id`]: m.pessoa_id }));
+      setNomes((n) => ({ ...n, [campo]: m.nome_completo }));
+      setCampoPessoa(null);
+      setResultadosPessoa([]);
+    },
+  });
 
   return (
     <div className="space-y-4">
@@ -483,8 +502,8 @@ const CultosPage: React.FC = () => {
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              <PessoaPicker campo="dirigente" label="Dirigente" />
-              <PessoaPicker campo="pregador" label="Pregador" />
+              <PessoaPicker label="Dirigente" {...pickerProps('dirigente')} />
+              <PessoaPicker label="Pregador" {...pickerProps('pregador')} />
             </div>
             <fieldset className="grid grid-cols-3 gap-4 border-t pt-4">
               <legend className="text-sm font-semibold text-gray-700 mb-2">Totais (preencher após o culto)</legend>

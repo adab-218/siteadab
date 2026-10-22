@@ -341,24 +341,28 @@ const UsuariosPage: React.FC = () => {
           {erroForm && (
             <div className="rounded-lg bg-red-50 text-red-800 text-sm px-4 py-3 mb-4" role="alert">{erroForm}</div>
           )}
-          <div className="space-y-4">
+          <form
+            className="space-y-4"
+            onSubmit={(e) => { e.preventDefault(); void salvarSenha(); }}
+          >
             <Field
               id="u-novasenha"
               label="Nova senha (mín. 10 caracteres)"
               type="password"
               minLength={10}
+              required
               value={form.senha}
               onChange={(e) => setForm((f) => ({ ...f, senha: e.target.value }))}
             />
             <div className="flex gap-3">
-              <button onClick={salvarSenha} disabled={salvando || form.senha.length < 10} className="flex-1 bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-60">
+              <button type="submit" disabled={salvando || form.senha.length < 10} className="flex-1 bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-60">
                 {salvando ? 'Salvando…' : 'Redefinir'}
               </button>
-              <button onClick={() => setModalSenha(null)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300">
+              <button type="button" onClick={() => setModalSenha(null)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300">
                 Cancelar
               </button>
             </div>
-          </div>
+          </form>
         </Modal>
       )}
 

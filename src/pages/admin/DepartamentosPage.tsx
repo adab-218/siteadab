@@ -96,7 +96,13 @@ const DepartamentosPage: React.FC = () => {
     setErroForm('');
     setSalvando(true);
     try {
-      const dados = { nome: formNome.trim(), descricao: formDescricao || undefined, lider_id: liderSel?.pessoa_id };
+      // liderSel null → lider_id: null (backend limpa o líder); se o
+      // campo nunca foi tocado numa edição, liderSel veio preenchido
+      const dados = {
+        nome: formNome.trim(),
+        descricao: formDescricao || undefined,
+        lider_id: liderSel ? liderSel.pessoa_id : null,
+      };
       if (modalForm?.id) {
         await departamentosApi.atualizar(modalForm.id, dados);
       } else {
@@ -169,6 +175,7 @@ const DepartamentosPage: React.FC = () => {
       setFormDescricao(d.descricao ?? '');
       if (d.lider_id && d.lider_nome) {
         setLiderSel({ pessoa_id: d.lider_id, nome_completo: d.lider_nome } as MembroListItem);
+        setBuscaMembro(d.lider_nome); // exibe o líder atual (input mostra buscaMembro)
       }
       setModalForm({ id: d.id });
     } else {

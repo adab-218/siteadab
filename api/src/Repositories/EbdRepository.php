@@ -86,16 +86,21 @@ final class EbdRepository
         return $stmt->fetchAll();
     }
 
-    /** Liga professor à classe; se já ativo, só atualiza o papel. */
+    /**
+     * Liga professor à classe. uq_ep_classe_pessoa ignora `ativo`, então
+     * um vínculo encerrado é reativado (ativo=1, data_fim=NULL) em vez
+     * de violar a unique key.
+     */
     public function vincularProfessor(int $classeId, int $pessoaId, string $papel): void
     {
         $existe = $this->pdo->prepare(
-            'SELECT id FROM ebd_professores WHERE classe_id = ? AND pessoa_id = ? AND ativo = 1'
+            'SELECT id FROM ebd_professores WHERE classe_id = ? AND pessoa_id = ?'
         );
         $existe->execute([$classeId, $pessoaId]);
         if ($id = $existe->fetchColumn()) {
-            $this->pdo->prepare('UPDATE ebd_professores SET papel = ? WHERE id = ?')
-                      ->execute([$papel, $id]);
+            $this->pdo->prepare(
+                'UPDATE ebd_professores SET papel = ?, ativo = 1, data_fim = NULL WHERE id = ?'
+            )->execute([$papel, $id]);
             return;
         }
         $this->pdo->prepare(
@@ -103,10 +108,13 @@ final class EbdRepository
         )->execute([$classeId, $pessoaId, $papel]);
     }
 
-    public function desvincularProfessor(int $id): void
+    /** Encerra o vínculo {pid} — escopado à {classeId} (evita IDOR). */
+    public function desvincularProfessor(int $classeId, int $id): void
     {
-        $this->pdo->prepare('UPDATE ebd_professores SET ativo = 0, data_fim = CURDATE() WHERE id = ?')
-                  ->execute([$id]);
+        $this->pdo->prepare(
+            'UPDATE ebd_professores SET ativo = 0, data_fim = CURDATE()
+              WHERE id = ? AND classe_id = ?'
+        )->execute([$id, $classeId]);
     }
 
     /** Professor (ebd_professor) é docente ativo da classe? */

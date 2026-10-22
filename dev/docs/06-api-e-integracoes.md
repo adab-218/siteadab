@@ -7,6 +7,8 @@ Convenções:
 
 - Respostas: `{ "data": ... }` ou `{ "error": { "code", "message" } }`
 - Auth: cookie de sessão; mutações exigem header `X-CSRF-Token`
+- HostGator: Mod_Security responde 406 HTML em POST **sem body** — o
+  frontend sempre envia `{}` em ações sem payload (`apiFetch` padrão)
 - Conteúdo pt-BR; datas `yyyy-mm-dd` na API, `dd/mm/aaaa` na UI
 - Paginação: `?pagina=1&por_pagina=25` (máx. 50); busca: `?q=` —
   resposta de listagem sempre no envelope
@@ -36,10 +38,10 @@ Implementadas (M1): leitura aberta a todo perfil autenticado —
 |--------|------|--------|--------|
 | GET | `/api/membros?q=&status=&cargo_id=&departamento_id=&pagina=&por_pagina=` | autenticado (lider: só seu depto) | ✅ |
 | GET | `/api/membros/{id}` | autenticado (lider: membro do seu depto) | ✅ |
-| POST | `/api/membros` `{pessoa, membro}` | admin, secretaria | ✅ |
+| POST | `/api/membros` `{pessoa: {...}, membro: {...}}` (envelope — payload plano → 400) | admin, secretaria | ✅ |
 | PUT | `/api/membros/{id}` `{pessoa, membro}` | admin, secretaria | ✅ |
 | PATCH | `/api/membros/{id}/status` `{status, data_status?}` — ao sair de `ativo` desvincula deptos/EBD/usuário (D1) | admin, secretaria | ✅ |
-| DELETE | `/api/membros/{id}` soft delete | só admin | ✅ |
+| DELETE | `/api/membros/{id}` soft delete — aplica D1 também (deptos, EBD, usuário) | só admin | ✅ |
 | POST | `/api/membros/{id}/foto` | admin, secretaria | pendente (uploads) |
 | GET | `/api/membros/aniversariantes?mes=` | painel | pendente |
 | POST | `/api/membros/importar` (CSV) | admin, secretaria | pendente (D9) |
@@ -74,7 +76,7 @@ Admin não pode rebaixar o próprio perfil nem desativar a própria conta
 |--------|------|--------|
 | GET | `/api/usuarios?q=` | ✅ |
 | POST | `/api/usuarios` `{pessoa_id, email, senha≥10, perfil}` | ✅ |
-| PUT | `/api/usuarios/{id}` `{email?, perfil?, ativo?}` | ✅ |
+| PUT | `/api/usuarios/{id}` `{email?, perfil?, ativo?}` — `senha` no body → 400 (use PATCH) | ✅ |
 | PATCH | `/api/usuarios/{id}/senha` `{senha≥10}` — invalida reset pendente | ✅ |
 | DELETE | `/api/usuarios/{id}` — desativa (`ativo=0`) | ✅ |
 
@@ -96,7 +98,7 @@ Dados iniciais (D12) aplicados pela migration `0008` (INSERT IGNORE).
 | PUT | `/api/cultos/{id}` | admin, secretaria, dirigente | ✅ |
 | DELETE | `/api/cultos/{id}` (hard delete; presenças em cascata) | admin, secretaria, dirigente | ✅ |
 | GET | `/api/cultos/{id}/presencas` — lista nominal (`pessoa_id`, `nome`) | autenticado | ✅ |
-| POST | `/api/cultos/{id}/presencas` `{pessoa_id}` — só membros; `uq_culto_pessoa` → add idempotente | admin, secretaria, dirigente | ✅ |
+| POST | `/api/cultos/{id}/presencas` `{pessoa_id}` — só membros ativos; `uq_culto_pessoa` → add **idempotente** (201 mesmo já existindo, por design — diferente de `/departamentos` que retorna 422) | admin, secretaria, dirigente | ✅ |
 | DELETE | `/api/cultos/{id}/presencas/{pessoa_id}` | admin, secretaria, dirigente | ✅ |
 
 ### Eventos (M4)
@@ -104,6 +106,8 @@ Dados iniciais (D12) aplicados pela migration `0008` (INSERT IGNORE).
 `publico=1` + não-cancelado + dentro do período alimenta `/public/eventos`
 e `v_programacao_publica` (WeeklySchedule) sem ação extra. Soft delete.
 Escritas: admin, secretaria, dirigente.
+`tipo`: `congresso|festividade|culto_especial|data_comemorativa|outro`;
+`status`: `planejado|confirmado|realizado|cancelado`.
 
 | Método | Rota | Status |
 |--------|------|--------|

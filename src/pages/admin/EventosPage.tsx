@@ -141,6 +141,8 @@ const EventosPage: React.FC = () => {
     setModalDetalhe(e);
     setAtivForm({ ...ATIV_VAZIA });
     setRespNome('');
+    setBuscaResp('');
+    setResultadosResp([]);
     setErroForm('');
     try {
       const completo = await eventosApi.ver(e.id);

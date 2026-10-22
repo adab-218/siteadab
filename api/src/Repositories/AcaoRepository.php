@@ -165,8 +165,10 @@ final class AcaoRepository
         return (int) $this->pdo->lastInsertId();
     }
 
-    public function removerBeneficiario(int $id): void
+    /** Remove beneficiário {id} escopado à {acaoId} (evita IDOR). */
+    public function removerBeneficiario(int $acaoId, int $id): void
     {
-        $this->pdo->prepare('DELETE FROM acao_beneficiarios WHERE id = ?')->execute([$id]);
+        $this->pdo->prepare('DELETE FROM acao_beneficiarios WHERE id = ? AND acao_id = ?')
+                  ->execute([$id, $acaoId]);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Adab\Api\Controllers;
 
 use Adab\Api\Json;
+use Adab\Api\Validacao;
 use Adab\Api\Repositories\CultoRepository;
 use Adab\Api\Repositories\DepartamentoRepository;
 use PDO;
@@ -49,6 +50,9 @@ final class CultosController
         if ($nome === '') {
             return Json::erro($response, 'VALIDACAO', 'nome é obrigatório.', 400);
         }
+        if (!Validacao::maxLen($nome, 120)) {
+            return Json::erro($response, 'VALIDACAO', 'nome deve ter até 120 caracteres.', 400);
+        }
         $diaSemana = $this->intOuNull($b['dia_semana_sugerido'] ?? null);
         if ($diaSemana !== null && ($diaSemana < 0 || $diaSemana > 6)) {
             return Json::erro($response, 'VALIDACAO', 'dia_semana_sugerido deve ser 0-6.', 400);
@@ -82,9 +86,19 @@ final class CultosController
         }
         if (isset($b['nome'])) {
             $b['nome'] = trim((string) $b['nome']);
+            if (!Validacao::maxLen($b['nome'], 120)) {
+                return Json::erro($response, 'VALIDACAO', 'nome deve ter até 120 caracteres.', 400);
+            }
         }
         if (isset($b['horario_padrao'])) {
             $b['horario_padrao'] = $this->horaOuNull($b['horario_padrao']);
+        }
+        if (array_key_exists('dia_semana_sugerido', $b) && $b['dia_semana_sugerido'] !== null
+            && $b['dia_semana_sugerido'] !== ''
+            && (!is_numeric($b['dia_semana_sugerido'])
+                || (int) $b['dia_semana_sugerido'] < 0
+                || (int) $b['dia_semana_sugerido'] > 6)) {
+            return Json::erro($response, 'VALIDACAO', 'dia_semana_sugerido deve ser 0-6.', 400);
         }
         try {
             $this->cultos->atualizarTipo($id, $b);
@@ -277,14 +291,12 @@ final class CultosController
 
     private function dataOuNull(mixed $v): ?string
     {
-        $v = trim((string) $v);
-        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
+        return Validacao::data($v);
     }
 
     private function horaOuNull(mixed $v): ?string
     {
-        $v = trim((string) $v);
-        return preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $v) ? $v : null;
+        return Validacao::hora($v);
     }
 
     private function intOuNull(mixed $v): ?int

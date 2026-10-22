@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Adab\Api\Controllers;
 
 use Adab\Api\Json;
+use Adab\Api\Validacao;
 use Adab\Api\Repositories\EbdRepository;
 use Adab\Api\Repositories\UsuarioRepository;
 use PDO;
@@ -28,7 +29,7 @@ final class EbdController
     private EbdRepository $ebd;
     private UsuarioRepository $usuarios; // pessoaExiste
 
-    public function __construct(PDO $pdo)
+    public function __construct(private PDO $pdo)
     {
         $this->ebd = new EbdRepository($pdo);
         $this->usuarios = new UsuarioRepository($pdo);
@@ -119,7 +120,7 @@ final class EbdController
         if (!$this->ebd->buscarClasse($id)) {
             return Json::erro($response, 'NAO_ENCONTRADO', 'Classe não encontrada.', 404);
         }
-        $this->ebd->desvincularProfessor((int) $args['pid']);
+        $this->ebd->desvincularProfessor($id, (int) $args['pid']);
         return Json::resposta($response, ['data' => $this->ebd->listarProfessores($id)]);
     }
 
@@ -335,18 +336,33 @@ final class EbdController
         if (!is_array($lista)) {
             return Json::erro($response, 'VALIDACAO', 'frequencias deve ser uma lista.', 400);
         }
+        // oferta é DECIMAL — valida antes do loop (senão PDOException a
+        // meio-caminho gravaria chamada parcial)
+        foreach ($lista as $f) {
+            if (isset($f['oferta']) && $f['oferta'] !== '' && $f['oferta'] !== null
+                && !is_numeric($f['oferta'])) {
+                return Json::erro($response, 'VALIDACAO', 'oferta deve ser numérica.', 400);
+            }
+        }
 
         // alunos válidos = matriculados na classe
         $matriculados = array_column($this->ebd->chamada($aulaId, $classeId), 'aluno_id');
         $uid = (int) ($_SESSION['usuario']['id'] ?? 0) ?: null;
         $salvos = 0;
-        foreach ($lista as $f) {
-            $alunoId = (int) ($f['aluno_id'] ?? 0);
-            if (!in_array($alunoId, $matriculados, true)) {
-                continue; // ignora aluno não matriculado (sem 422 — idempotente)
+        $this->pdo->beginTransaction();
+        try {
+            foreach ($lista as $f) {
+                $alunoId = (int) ($f['aluno_id'] ?? 0);
+                if (!in_array($alunoId, $matriculados, true)) {
+                    continue; // ignora aluno não matriculado (sem 422 — idempotente)
+                }
+                $this->ebd->registrarFrequencia($aulaId, $alunoId, (array) $f, $uid);
+                $salvos++;
             }
-            $this->ebd->registrarFrequencia($aulaId, $alunoId, (array) $f, $uid);
-            $salvos++;
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
         }
         return Json::resposta($response, ['data' => [
             'registrados' => $salvos,
@@ -375,7 +391,6 @@ final class EbdController
 
     private function dataOuNull(mixed $v): ?string
     {
-        $v = trim((string) $v);
-        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
+        return Validacao::data($v);
     }
 }

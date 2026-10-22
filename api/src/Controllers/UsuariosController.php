@@ -78,6 +78,12 @@ final class UsuariosController
         $euMesmo = $id === (int) ($_SESSION['usuario']['id'] ?? 0);
         $dados = [];
 
+        // senha tem rota própria (PATCH /senha com política) — rejeita
+        // aqui para não ignorar silenciosamente
+        if (array_key_exists('senha', $b)) {
+            return Json::erro($response, 'VALIDACAO',
+                'Use PATCH /usuarios/{id}/senha para alterar a senha.', 400);
+        }
         if (isset($b['email'])) {
             $email = strtolower(trim((string) $b['email']));
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {

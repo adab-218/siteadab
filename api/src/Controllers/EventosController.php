@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Adab\Api\Controllers;
 
 use Adab\Api\Json;
+use Adab\Api\Validacao;
 use Adab\Api\Repositories\DepartamentoRepository;
 use Adab\Api\Repositories\EventoRepository;
 use PDO;
@@ -116,7 +117,8 @@ final class EventosController
     {
         $id = (int) $args['id'];
         $aid = (int) $args['aid'];
-        if (!$this->eventos->buscar($id) || !$this->eventos->buscarAtividade($aid)) {
+        $atividade = $this->eventos->buscarAtividade($aid);
+        if (!$this->eventos->buscar($id) || !$atividade || (int) $atividade['evento_id'] !== $id) {
             return Json::erro($response, 'NAO_ENCONTRADO', 'Atividade não encontrada.', 404);
         }
         $b = (array) $request->getParsedBody();
@@ -133,8 +135,10 @@ final class EventosController
 
     public function removerAtividade(Request $request, Response $response, array $args): Response
     {
+        $id = (int) $args['id'];
         $aid = (int) $args['aid'];
-        if (!$this->eventos->buscarAtividade($aid)) {
+        $atividade = $this->eventos->buscarAtividade($aid);
+        if (!$atividade || (int) $atividade['evento_id'] !== $id) {
             return Json::erro($response, 'NAO_ENCONTRADO', 'Atividade não encontrada.', 404);
         }
         $this->eventos->removerAtividade($aid);
@@ -150,6 +154,8 @@ final class EventosController
         if (!$parcial || array_key_exists('nome', $b)) {
             if (trim((string) ($b['nome'] ?? '')) === '') {
                 $erros[] = 'nome é obrigatório.';
+            } elseif (!Validacao::maxLen($b['nome'], 160)) {
+                $erros[] = 'nome deve ter até 160 caracteres.';
             }
         }
         if (isset($b['tipo']) && !in_array($b['tipo'], EventoRepository::TIPOS, true)) {
@@ -161,7 +167,9 @@ final class EventosController
         if (!$parcial && !$this->dataOuNull($b['data_inicio'] ?? null)) {
             $erros[] = 'data_inicio é obrigatória (yyyy-mm-dd).';
         }
-        if (isset($b['data_inicio']) && !$this->dataOuNull($b['data_inicio'])) {
+        // array_key_exists: data_inicio=null/'' explícito também é inválida
+        // (coluna NOT NULL — null passaria a validação e estouraria no banco)
+        if (array_key_exists('data_inicio', $b) && !$this->dataOuNull($b['data_inicio'])) {
             $erros[] = 'data_inicio inválida.';
         }
         if (isset($b['data_fim']) && $b['data_fim'] !== null && $b['data_fim'] !== '' && !$this->dataOuNull($b['data_fim'])) {
@@ -200,6 +208,8 @@ final class EventosController
         $erros = [];
         if (trim((string) ($b['titulo'] ?? '')) === '') {
             $erros[] = 'titulo é obrigatório.';
+        } elseif (!Validacao::maxLen($b['titulo'], 200)) {
+            $erros[] = 'titulo deve ter até 200 caracteres.';
         }
         if (!$this->dataOuNull($b['data'] ?? null)) {
             $erros[] = 'data é obrigatória (yyyy-mm-dd).';
@@ -225,13 +235,11 @@ final class EventosController
 
     private function dataOuNull(mixed $v): ?string
     {
-        $v = trim((string) $v);
-        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
+        return Validacao::data($v);
     }
 
     private function horaOuNull(mixed $v): ?string
     {
-        $v = trim((string) $v);
-        return preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $v) ? $v : null;
+        return Validacao::hora($v);
     }
 }

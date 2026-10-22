@@ -146,16 +146,7 @@ final class MembroRepository
                       ->execute([$status, $dataStatus ?? date('Y-m-d'), $pessoaId]);
 
             if ($status !== 'ativo') {
-                $this->pdo->prepare(
-                    'UPDATE membro_departamentos SET data_fim = CURDATE()
-                      WHERE pessoa_id = ? AND data_fim IS NULL'
-                )->execute([$pessoaId]);
-                $this->pdo->prepare(
-                    "UPDATE ebd_alunos SET status = 'desistente', data_desistencia = CURDATE()
-                      WHERE pessoa_id = ? AND status = 'matriculado'"
-                )->execute([$pessoaId]);
-                $this->pdo->prepare('UPDATE usuarios SET ativo = 0 WHERE pessoa_id = ?')
-                          ->execute([$pessoaId]);
+                $this->desvincular($pessoaId);
             }
             $this->pdo->commit();
         } catch (\Throwable $e) {
@@ -164,10 +155,45 @@ final class MembroRepository
         }
     }
 
+    /**
+     * Soft delete aplica a mesma regra D1 (desvincula departamentos,
+     * encerra matrículas EBD e desativa acesso) — membro excluído não
+     * pode continuar contando como ativo nem seu usuário logando.
+     */
     public function softDelete(int $pessoaId): void
     {
-        $this->pdo->prepare('UPDATE membros SET deleted_at = NOW() WHERE pessoa_id = ?')
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->prepare('UPDATE membros SET deleted_at = NOW() WHERE pessoa_id = ?')
+                      ->execute([$pessoaId]);
+            $this->desvincular($pessoaId);
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    /** Regra D1: encerra vínculos ao sair de 'ativo' ou ao excluir. */
+    private function desvincular(int $pessoaId): void
+    {
+        $this->pdo->prepare(
+            'UPDATE membro_departamentos SET data_fim = CURDATE()
+              WHERE pessoa_id = ? AND data_fim IS NULL'
+        )->execute([$pessoaId]);
+        $this->pdo->prepare(
+            "UPDATE ebd_alunos SET status = 'desistente', data_desistencia = CURDATE()
+              WHERE pessoa_id = ? AND status = 'matriculado'"
+        )->execute([$pessoaId]);
+        $this->pdo->prepare('UPDATE usuarios SET ativo = 0 WHERE pessoa_id = ?')
                   ->execute([$pessoaId]);
+    }
+
+    public function cargoExiste(int $cargoId): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM cargos WHERE id = ?');
+        $stmt->execute([$cargoId]);
+        return (int) $stmt->fetchColumn() > 0;
     }
 
     /** Aniversariantes do mês (membros ativos). @return array<int,array<string,mixed>> */

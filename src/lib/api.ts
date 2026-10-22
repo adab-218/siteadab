@@ -34,6 +34,12 @@ export interface RespostaPaginada<T> {
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const metodo = (options.method ?? 'GET').toUpperCase();
+  // Mod_Security (HostGator) responde 406 HTML em POST/PUT sem body —
+  // ações sem payload (desistir, gerar-aulas) enviam JSON vazio.
+  if (options.body === undefined && ['POST', 'PUT', 'PATCH'].includes(metodo)) {
+    options.body = '{}';
+  }
   const headers = new Headers(options.headers);
   if (!headers.has('Content-Type') && options.body) {
     headers.set('Content-Type', 'application/json');
@@ -268,7 +274,7 @@ export const departamentosApi = {
   listar: (apenasAtivos?: boolean) =>
     apiFetch<Departamento[]>(`/departamentos${apenasAtivos !== undefined ? `?ativo=${apenasAtivos}` : ''}`),
   ver: (id: number) => apiFetch<Departamento>(`/departamentos/${id}`),
-  criar: (dados: { nome: string; descricao?: string; lider_id?: number }) =>
+  criar: (dados: { nome: string; descricao?: string; lider_id?: number | null }) =>
     apiFetch<Departamento>('/departamentos', { method: 'POST', body: JSON.stringify(dados) }),
   atualizar: (id: number, dados: { nome?: string; descricao?: string; lider_id?: number | null; ativo?: boolean }) =>
     apiFetch<Departamento>(`/departamentos/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),

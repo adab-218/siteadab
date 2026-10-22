@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Adab\Api\Controllers;
 
 use Adab\Api\Json;
+use Adab\Api\Validacao;
 use Adab\Api\Repositories\DepartamentoRepository;
 use Adab\Api\Repositories\MembroRepository;
 use PDO;
@@ -206,7 +207,6 @@ final class DepartamentosController
 
     private function dataOuNull(mixed $v): ?string
     {
-        $v = trim((string) $v);
-        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
+        return Validacao::data($v);
     }
 }

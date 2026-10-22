@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Adab\Api\Controllers;
 
 use Adab\Api\Json;
+use Adab\Api\Validacao;
 use Adab\Api\Repositories\MembroRepository;
 use Adab\Api\Repositories\PessoaRepository;
 use PDO;
@@ -78,7 +79,10 @@ final class MembrosController
         $pessoa = (array) ($body['pessoa'] ?? []);
         $membro = (array) ($body['membro'] ?? []);
 
-        $erros = $this->validarPessoa($pessoa);
+        $erros = array_merge(
+            $this->validarPessoa($pessoa),
+            $this->validarMembro($membro)
+        );
         if ($erros) {
             return Json::erro($response, 'VALIDACAO', implode(' ', $erros), 400);
         }
@@ -114,15 +118,21 @@ final class MembrosController
         $pessoa = (array) ($body['pessoa'] ?? []);
         $membro = (array) ($body['membro'] ?? []);
 
-        $erros = $this->validarPessoa($pessoa, parcial: true);
+        $erros = array_merge(
+            $this->validarPessoa($pessoa, parcial: true),
+            $this->validarMembro($membro)
+        );
         if ($erros) {
             return Json::erro($response, 'VALIDACAO', implode(' ', $erros), 400);
         }
 
         try {
+            $this->pdo->beginTransaction();
             $this->pessoas->atualizar($id, $pessoa);
             $this->membros->atualizar($id, $membro);
+            $this->pdo->commit();
         } catch (\PDOException $e) {
+            $this->pdo->rollBack();
             if (str_contains($e->getMessage(), 'uq_pessoas_cpf')) {
                 return Json::erro($response, 'CPF_DUPLICADO', 'Já existe pessoa cadastrada com este CPF.', 422);
             }
@@ -146,6 +156,10 @@ final class MembrosController
                 'Status inválido: ' . implode(', ', MembroRepository::statusValidos()) . '.', 400);
         }
         $dataStatus = $this->dataOuNull($body['data_status'] ?? null);
+        if (array_key_exists('data_status', $body) && $body['data_status'] !== null
+            && $body['data_status'] !== '' && $dataStatus === null) {
+            return Json::erro($response, 'VALIDACAO', 'data_status inválida (yyyy-mm-dd).', 400);
+        }
 
         $this->membros->mudarStatus($id, $status, $dataStatus);
         return Json::resposta($response, ['data' => $this->membros->buscarComPessoa($id)]);
@@ -208,6 +222,49 @@ final class MembrosController
         if (!empty($p['cpf']) && !$this->cpfValido((string) $p['cpf'])) {
             $erros[] = 'cpf inválido.';
         }
+        if (isset($p['data_nascimento']) && $p['data_nascimento'] !== null
+            && $p['data_nascimento'] !== '' && !$this->dataOuNull($p['data_nascimento'])) {
+            $erros[] = 'data_nascimento inválida (yyyy-mm-dd).';
+        }
+        if (!empty($p['conjuge_id']) && !$this->pessoas->buscar((int) $p['conjuge_id'])) {
+            $erros[] = 'conjuge_id inexistente.';
+        }
+        foreach ([
+            'nome_completo' => 200, 'nome_social' => 200, 'estado_civil' => 20,
+            'cpf' => 14, 'telefone' => 30, 'email' => 120, 'cep' => 9,
+            'logradouro' => 200, 'numero' => 20, 'complemento' => 100,
+            'bairro' => 100, 'cidade' => 100, 'foto_url' => 255,
+        ] as $campo => $max) {
+            if (isset($p[$campo]) && !Validacao::maxLen($p[$campo], $max)) {
+                $erros[] = "{$campo} deve ter até {$max} caracteres.";
+            }
+        }
+        return $erros;
+    }
+
+    /** @return string[] erros de validação da ficha de membro */
+    private function validarMembro(array $m): array
+    {
+        $erros = [];
+        if (isset($m['status']) && !in_array($m['status'], MembroRepository::statusValidos(), true)) {
+            $erros[] = 'status inválido.';
+        }
+        foreach (['data_conversao', 'data_batismo', 'data_status'] as $campo) {
+            if (isset($m[$campo]) && $m[$campo] !== null && $m[$campo] !== ''
+                && !$this->dataOuNull($m[$campo])) {
+                $erros[] = "{$campo} inválida (yyyy-mm-dd).";
+            }
+        }
+        if (!empty($m['cargo_id']) && !$this->membros->cargoExiste((int) $m['cargo_id'])) {
+            $erros[] = 'cargo_id inexistente.';
+        }
+        foreach ([
+            'numero_carteirinha' => 30, 'congregacao' => 120, 'procedencia' => 200,
+        ] as $campo => $max) {
+            if (isset($m[$campo]) && !Validacao::maxLen($m[$campo], $max)) {
+                $erros[] = "{$campo} deve ter até {$max} caracteres.";
+            }
+        }
         return $erros;
     }
 
@@ -232,7 +289,6 @@ final class MembrosController
 
     private function dataOuNull(mixed $v): ?string
     {
-        $v = trim((string) $v);
-        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
+        return Validacao::data($v);
     }
 }

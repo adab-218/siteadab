@@ -59,6 +59,35 @@ function useBuscaPessoa() {
   return { busca, setBusca, resultados, selecionada, setSelecionada, limpar };
 }
 
+/** Picker de membro — nível de módulo (dentro do componente remonta a cada tecla e perde o foco). */
+const PessoaPicker: React.FC<{ busca: ReturnType<typeof useBuscaPessoa>; rotulo: string }> = ({ busca: b, rotulo }) => (
+  <div className="relative">
+    <label className="block text-sm font-medium text-gray-700 mb-1">{rotulo}</label>
+    <input
+      type="search"
+      placeholder="Buscar membro ativo…"
+      value={b.busca}
+      onChange={(e) => { b.setBusca(e.target.value); b.setSelecionada(null); }}
+      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+    />
+    {b.resultados.length > 0 && (
+      <ul className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-auto">
+        {b.resultados.map((m) => (
+          <li key={m.pessoa_id}>
+            <button
+              type="button"
+              onClick={() => { b.setSelecionada(m); b.setBusca(m.nome_completo); }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-red-50"
+            >
+              {m.nome_completo}
+            </button>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+);
+
 const EbdPage: React.FC = () => {
   const { usuario } = useAuth();
   const ebdAdmin = ['admin', 'ebd_admin'].includes(usuario?.perfil ?? '');
@@ -67,6 +96,7 @@ const EbdPage: React.FC = () => {
   const [erro, setErro] = useState('');
   const [erroForm, setErroForm] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [avisoChamada, setAvisoChamada] = useState('');
 
   // ----- Classes -----
   const [classes, setClasses] = useState<EbdClasse[]>([]);
@@ -338,6 +368,7 @@ const EbdPage: React.FC = () => {
     if (!aulaInfo) return;
     setSalvando(true);
     setErro('');
+    setAvisoChamada('');
     try {
       const r = await ebdApi.salvarChamada(
         aulaInfo.id,
@@ -352,41 +383,13 @@ const EbdPage: React.FC = () => {
         }))
       );
       setChamada(r.chamada);
-      alert(`${r.registrados} registro(s) de presença salvos.`);
+      setAvisoChamada(`${r.registrados} registro(s) de presença salvos.`);
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao salvar chamada.');
     } finally {
       setSalvando(false);
     }
   };
-
-  const PessoaPicker = ({ busca: b, rotulo }: { busca: ReturnType<typeof useBuscaPessoa>; rotulo: string }) => (
-    <div className="relative">
-      <label className="block text-sm font-medium text-gray-700 mb-1">{rotulo}</label>
-      <input
-        type="search"
-        placeholder="Buscar membro ativo…"
-        value={b.busca}
-        onChange={(e) => { b.setBusca(e.target.value); b.setSelecionada(null); }}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-      />
-      {b.resultados.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-auto">
-          {b.resultados.map((m) => (
-            <li key={m.pessoa_id}>
-              <button
-                type="button"
-                onClick={() => { b.setSelecionada(m); b.setBusca(m.nome_completo); }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-red-50"
-              >
-                {m.nome_completo}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
 
   const abas: { chave: Aba; label: string; icone: React.ElementType }[] = [
     { chave: 'classes', label: 'Classes', icone: GraduationCap },
@@ -651,6 +654,11 @@ const EbdPage: React.FC = () => {
       {/* ============ ABA CHAMADA ============ */}
       {aba === 'chamada' && (
         <div className="space-y-4">
+          {avisoChamada && (
+            <div className="rounded-lg bg-green-50 text-green-800 text-sm px-4 py-3" role="status">
+              {avisoChamada}
+            </div>
+          )}
           <div className="bg-white rounded-lg border p-4 grid sm:grid-cols-3 gap-3 items-end">
             <div>
               <label htmlFor="ch-periodo" className="block text-sm font-medium text-gray-700 mb-1">Período</label>
