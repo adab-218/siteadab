@@ -61,14 +61,16 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       `UNIQUE usuarios.pessoa_id`, `membro_departamentos`, `ebd_professores`;
       `ebd_alunos` coluna gerada p/ re-matrícula; `email`→`email_hash` +
       índice por IP em `login_tentativas`; índice `audit_log(criado_em)`
-- [ ] T1.3 Shape de paginação `{data:{itens,total,pagina,por_pagina}}` (doc 06 + helper)
+- [x] T1.3 Shape de paginação `{data:{itens,pagina,por_pagina,total}}` — doc 06 +
+      `Json::paginada()`/`parametrosPaginacao()` + `RespostaPaginada<T>`
 
 ### Testes
 
 - [x] T1.4 PHPUnit: testes unitários dos middlewares (Auth/Perfil/Csrf) + `Json`
 - [x] T1.5 Vitest: `jsdom` + `@testing-library/*` instalados; `environment` no vite.config
 - [x] T1.6 `api.test.ts` (envelope, erro, CSRF) — `--passWithNoTests` removido
-- [ ] T1.7 CI: MySQL service p/ testes de integração (futuro)
+- [x] T1.7 CI: MySQL 8 service + `MigrationsIntegrationTest` (aplica 0001–0007
+      de verdade no banco de teste; pulado local sem `ADAB_TEST_DSN`)
 
 ### Frontend estrutural
 
@@ -78,13 +80,16 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
 - [x] T1.11 `AdminLayout` + `DashboardPage` stub + `EmBrevePage` por módulo
 - [x] T1.12 `WeeklySchedule`: somente leitura, consumindo `publicApi.programacao()`
       (CRUD anônimo removido; dialog c/ Escape + scroll lock)
-- [ ] T1.13 `ui/Modal.tsx` + `ui/Field.tsx` acessíveis (focus trap, labels)
-- [ ] T1.14 Migrar imagens Imgur p/ `public/` (logo, hero)
+- [x] T1.13 `ui/Modal.tsx` (dialog, Escape, scroll lock, foco) + `ui/Field.tsx`
+      (label htmlFor + erro via aria-describedby)
+- [x] T1.14 Imagens Imgur → `public/img/` (logo, hero, pastor) — CSP adicionada
+      no `.htaccess` (self + google maps + soundcloud)
 
 ### Robustez backend (débitos)
 
 - [x] T1.15 Sessão lazy (não cria sessão em `/health`, `/public/*`)
-- [ ] T1.16 `me` rotaciona `session_id` periodicamente / timeout de inatividade
+- [x] T1.16 `AuthMiddleware`: timeout de inatividade 30min + rotação de
+      `session_id` a cada 15min
 - [~] T1.17 `admin/migrate`: mantido "sessão admin OU X-Migrate-Token" —
       decisão registrada (SameSite=Lax + perfil admin mitigam CSRF)
 
@@ -96,9 +101,11 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
 - [ ] OPS.4 Uptime monitor externo (UptimeRobot/Healthchecks) pingando `/api/health`
 - [~] OPS.5 `session_save_path`: deploy já gera `~/adab_sessions` (criado em runtime);
       confirmar criação após próximo deploy
-- [ ] OPS.6 Verificar em prod: `/api/config.php`→403, `/api/migrations/0001_*.sql`→403, `/.git/config`→404/403
+- [x] OPS.6 Verificado em prod (22/10): `config.php`→403, `migrations/*.sql`→403,
+      `/.git/config`→403, `.ftp-deploy-sync-state.json`→403, `/login`→200
 - [ ] OPS.7 Rotacionar senha FTP/DB (apareceu em chat) + atualizar secrets
-- [ ] OPS.8 `gitleaks`/git log — confirmar que nenhum segredo entrou no histórico
+- [x] OPS.8 Varredura do histórico git — nenhum segredo/hash/credencial
+      commitado (só referências de código)
 
 ## T2 — Módulos (ordem do plano de ação)
 
@@ -112,16 +119,18 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
 
 ## DECISÕES — pendentes do cliente (bloqueiam partes do T2)
 
-- [ ] D1 Ciclo de vida do membro (transições de status + efeitos colaterais)
+- [x] D1 **Fluxo livre + desvincula**: status muda livremente; sair de 'ativo'
+      desativa vínculos de departamento, matrícula EBD e acesso de usuário
 - [ ] D2 EBD: oferta/visitante por aluno ou totais da aula
 - [ ] D3 Re-matrícula após desistência (novo registro ou reativação)
 - [ ] D4 Escopo `ebd_professor` (busca ampla p/ matricular vs. só sua classe)
-- [ ] D5 O que `lider_departamento` vê ao logar
-- [ ] D6 Departamentos aceitam não-membros?
+- [x] D5 **`lider_departamento` vê/edita apenas o próprio departamento**
+      (membros + ações do depto; escopo por registro)
+- [x] D6 **Departamentos só aceitam membros** (FK atual para `membros` mantida)
 - [ ] D7 LGPD: política de retenção/anonimização + termo de consentimento
 - [ ] D8 Calendário EBD (domingos? feriados? 13 lições fixas?)
 - [ ] D9 Formato/chave de dedup do CSV de importação
 - [ ] D10 SMTP disponível? Fluxo alternativo se e-mail falhar
 - [ ] D11 Unique `(tipo_culto_id, data)` — uma entrada por tipo/dia é a regra?
 - [ ] D12 Listas iniciais de cargos/tipos de culto
-- [ ] D13 Gerador de oração/reflexão (fake no `App.tsx`): remover ou formalizar?
+- [x] D13 **Gerador fake removido do MVP** (seção 'Oração & Reflexão' cortada)

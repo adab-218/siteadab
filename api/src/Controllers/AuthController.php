@@ -65,6 +65,8 @@ final class AuthController
         session_regenerate_id(true);
         $csrf = bin2hex(random_bytes(32));
         $_SESSION['csrf'] = $csrf;
+        $_SESSION['regenerada_em'] = time();
+        $_SESSION['ultimo_acesso'] = time();
         $_SESSION['usuario'] = [
             'id' => (int) $usuario['id'],
             'pessoa_id' => (int) $usuario['pessoa_id'],

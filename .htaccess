@@ -20,8 +20,8 @@ RewriteRule . /index.html [L]
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    # CSP será definida na fase de hardening (allowlist: self, maps.google,
-    # w.soundcloud, i.imgur)
+    # CSP: assets próprios + iframes permitidos (Google Maps, SoundCloud)
+    Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; frame-src https://www.google.com https://w.soundcloud.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
 </IfModule>
 
 # Bloquear arquivos sensíveis: dotfiles, dumps, logs, estado do FTP-Deploy.

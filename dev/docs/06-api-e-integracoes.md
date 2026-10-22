@@ -8,7 +8,11 @@ Convenções:
 - Respostas: `{ "data": ... }` ou `{ "error": { "code", "message" } }`
 - Auth: cookie de sessão; mutações exigem header `X-CSRF-Token`
 - Conteúdo pt-BR; datas `yyyy-mm-dd` na API, `dd/mm/aaaa` na UI
-- Paginação: `?pagina=1&por_pagina=25`; busca: `?q=`
+- Paginação: `?pagina=1&por_pagina=25` (máx. 50); busca: `?q=` —
+  resposta de listagem sempre no envelope
+  `{ "data": { "itens": [...], "pagina": 1, "por_pagina": 25, "total": 137 } }`
+  (helpers: `Json::paginada()` / `Json::parametrosPaginacao()` no PHP,
+  `RespostaPaginada<T>` em `src/lib/api.ts`)
 - Erros: 400 validação, 401 não autenticado, 403 sem permissão,
   404 não encontrado, 422 regra de negócio
 

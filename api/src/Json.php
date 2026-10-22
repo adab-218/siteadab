@@ -38,4 +38,34 @@ final class Json
     {
         return self::resposta($res, ['error' => ['code' => $code, 'message' => $message]], $status);
     }
+
+    /**
+     * Resposta paginada padrão do contrato (ver dev/docs/06):
+     *   {data: {itens: [...], pagina, por_pagina, total}}
+     *
+     * @param array<int,mixed> $itens
+     */
+    public static function paginada(Response $res, array $itens, int $total, int $pagina, int $porPagina): Response
+    {
+        return self::resposta($res, ['data' => [
+            'itens' => $itens,
+            'pagina' => $pagina,
+            'por_pagina' => $porPagina,
+            'total' => $total,
+        ]]);
+    }
+
+    /**
+     * Normaliza ?pagina= e ?por_pagina= da query string.
+     * por_pagina limitado a $max (padrão 50, mínimo 1).
+     *
+     * @return array{0:int,1:int} [pagina, porPagina]
+     */
+    public static function parametrosPaginacao(array $query, int $max = 50): array
+    {
+        $pagina = max(1, (int) ($query['pagina'] ?? 1));
+        $porPagina = (int) ($query['por_pagina'] ?? 20);
+        $porPagina = max(1, min($max, $porPagina));
+        return [$pagina, $porPagina];
+    }
 }

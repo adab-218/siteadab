@@ -100,7 +100,7 @@ const WeeklySchedule: React.FC<WeeklyScheduleProps> = ({ onClose }) => {
             <div className="text-center flex-1">
               <div className="flex items-center justify-center mb-2">
                 <img
-                  src="https://i.imgur.com/zlIM5kM.jpeg"
+                  src="/img/logo.jpeg"
                   alt="Logo AD"
                   className="h-12 w-auto mr-3"
                 />

@@ -14,11 +14,17 @@ use Slim\Psr7\Response as SlimResponse;
 
 /**
  * Exige sessão autenticada (401 caso contrário).
- * Revalida o usuário no banco a cada request: desativação ou troca
- * de perfil passam a valer imediatamente (sem esperar expirar sessão).
+ *
+ * - Timeout de inatividade (30min): expira sessões paradas;
+ * - Rotação de session_id a cada 15min (fixação pós-roubo);
+ * - Revalida `usuarios.ativo` e refresca o perfil a cada request:
+ *   desativação ou troca de perfil passam a valer imediatamente.
  */
 final class AuthMiddleware implements MiddlewareInterface
 {
+    private const INATIVIDADE_MAX_SEG = 1800;   // 30 min
+    private const ROTACAO_INTERVALO_SEG = 900;  // 15 min
+
     public function __construct(private PDO $pdo)
     {
     }
@@ -28,6 +34,21 @@ final class AuthMiddleware implements MiddlewareInterface
         $usuario = $_SESSION['usuario'] ?? null;
         if (empty($usuario['id'])) {
             return Json::erro(new SlimResponse(), 'NAO_AUTENTICADO', 'Login necessário.', 401);
+        }
+
+        $agora = time();
+        $ultimoAcesso = (int) ($_SESSION['ultimo_acesso'] ?? 0);
+        if ($ultimoAcesso > 0 && ($agora - $ultimoAcesso) > self::INATIVIDADE_MAX_SEG) {
+            $_SESSION = [];
+            return Json::erro(new SlimResponse(), 'SESSAO_EXPIRADA', 'Sessão expirada por inatividade.', 401);
+        }
+        $_SESSION['ultimo_acesso'] = $agora;
+
+        // Rotação periódica do id — janela curta p/ id vazado
+        if (session_status() === PHP_SESSION_ACTIVE
+            && ($agora - (int) ($_SESSION['regenerada_em'] ?? 0)) > self::ROTACAO_INTERVALO_SEG) {
+            session_regenerate_id(true);
+            $_SESSION['regenerada_em'] = $agora;
         }
 
         $stmt = $this->pdo->prepare('SELECT ativo, perfil FROM usuarios WHERE id = ?');

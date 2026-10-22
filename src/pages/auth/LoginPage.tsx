@@ -51,7 +51,7 @@ const LoginPage: React.FC = () => {
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-8">
         <div className="text-center mb-8">
           <img
-            src="https://i.imgur.com/zlIM5kM.jpeg"
+            src="/img/logo.jpeg"
             alt="Logo ADAB"
             className="h-16 w-auto mx-auto mb-4"
           />

@@ -22,6 +22,17 @@ interface ApiEnvelope<T> {
   error?: { code: string; message: string };
 }
 
+/**
+ * Contrato de listas paginadas (ver dev/docs/06):
+ *   GET /recurso?pagina=2&por_pagina=20&busca=x
+ */
+export interface RespostaPaginada<T> {
+  itens: T[];
+  pagina: number;
+  por_pagina: number;
+  total: number;
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   if (!headers.has('Content-Type') && options.body) {

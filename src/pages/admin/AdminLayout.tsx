@@ -35,7 +35,7 @@ const AdminLayout: React.FC = () => {
       {/* Sidebar */}
       <aside className="w-56 bg-white border-r flex flex-col">
         <div className="p-4 border-b">
-          <img src="https://i.imgur.com/zlIM5kM.jpeg" alt="Logo ADAB" className="h-10 w-auto" />
+          <img src="/img/logo.jpeg" alt="Logo ADAB" className="h-10 w-auto" />
           <p className="text-xs text-gray-500 mt-2">Gestão do Templo</p>
         </div>
         <nav className="flex-1 p-3 space-y-1">

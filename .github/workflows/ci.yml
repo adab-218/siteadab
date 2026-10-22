@@ -22,6 +22,19 @@ jobs:
 
   api:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: test_root
+          MYSQL_DATABASE: adab_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -32,3 +45,7 @@ jobs:
         working-directory: api
       - run: composer test
         working-directory: api
+        env:
+          ADAB_TEST_DSN: "mysql:host=127.0.0.1;port=3306;dbname=adab_test;charset=utf8mb4"
+          ADAB_TEST_USER: root
+          ADAB_TEST_PASS: test_root

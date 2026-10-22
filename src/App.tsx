@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, ChevronRight, Users, Heart, BookOpen, HandHeart, MapPin, Mail, Facebook, Sparkles, Calendar } from 'lucide-react';
+import { Menu, X, ChevronRight, Users, Heart, BookOpen, HandHeart, MapPin, Mail, Facebook, Calendar } from 'lucide-react';
 import WeeklySchedule from './components/WeeklySchedule';
 
 interface MenuItemProps {
@@ -59,49 +59,10 @@ const DepartmentCard: React.FC<DepartmentCard> = ({ name, description, icon }) =
 const App: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
-  const [prayerTopic, setPrayerTopic] = useState('');
-  const [prayerResult, setPrayerResult] = useState('');
-  const [reflectionResult, setReflectionResult] = useState('');
-  const [isPrayerLoading, setIsPrayerLoading] = useState(false);
-  const [isReflectionLoading, setIsReflectionLoading] = useState(false);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-  
+
   const closeMenu = () => setIsMenuOpen(false);
-
-  const generatePrayer = async () => {
-    if (!prayerTopic.trim()) return;
-    
-    setIsPrayerLoading(true);
-    // Simulação de chamada API - substitua pela integração real com LLM
-    setTimeout(() => {
-      setPrayerResult(`Querido Pai Celestial, venho até Vós com um coração grato para falar sobre ${prayerTopic}. 
-
-Sei que Tu és fiel e que todas as coisas cooperam para o bem daqueles que Te amam. Peço que me conceda sabedoria e discernimento neste momento, e que a Tua vontade seja feita em minha vida.
-
-Que eu possa confiar plenamente em Ti, sabendo que Teus planos são sempre perfeitos. Obrigado(a) por me ouvir e por Teu amor incondicional.
-
-Em nome de Jesus, amém.`);
-      setIsPrayerLoading(false);
-    }, 2000);
-  };
-
-  const generateReflection = async () => {
-    setIsReflectionLoading(true);
-    const today = new Date().toLocaleDateString('pt-BR');
-    
-    // Simulação de chamada API - substitua pela integração real com LLM
-    setTimeout(() => {
-      setReflectionResult(`**"Porque eu sei os pensamentos que tenho a respeito de vós, diz o SENHOR; pensamentos de paz, e não de mal, para vos dar o fim que esperais." - Jeremias 29:11**
-
-Hoje, ${today}, somos lembrados de que Deus tem um plano perfeito para cada um de nós. Mesmo quando enfrentamos dificuldades ou incertezas, podemos descansar na certeza de que o Senhor conhece nosso futuro e tem preparado coisas boas para aqueles que O amam.
-
-Nas tempestades da vida, quando tudo parece incerto, lembre-se: você não está sozinho. O mesmo Deus que cuida dos pássaros do céu e das flores do campo cuida de você com amor infinito. Confie nos planos dEle, pois são sempre de paz e esperança.
-
-Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em direção aos propósitos divinos para sua vida.`);
-      setIsReflectionLoading(false);
-    }, 2000);
-  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -110,7 +71,7 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center">
             <img 
-              src="https://i.imgur.com/zlIM5kM.jpeg" 
+              src="/img/logo.jpeg" 
               alt="Logo AD Templo Arthur Bernardes" 
               className="h-12 w-auto"
             />
@@ -130,7 +91,6 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
             <MenuItem href="#departamentos">Departamentos</MenuItem>
             <MenuItem href="#missoes">Missões</MenuItem>
             <MenuItem href="#sobre">Sobre Nós</MenuItem>
-            <MenuItem href="#oracao">Oração & Reflexão</MenuItem>
             <MenuItem href="#contato">Contato</MenuItem>
             <button className="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition-colors duration-200 font-semibold">
               Contribua
@@ -168,7 +128,6 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
               <MenuItem href="#departamentos" onClick={closeMenu}>Departamentos</MenuItem>
               <MenuItem href="#missoes" onClick={closeMenu}>Missões</MenuItem>
               <MenuItem href="#sobre" onClick={closeMenu}>Sobre Nós</MenuItem>
-              <MenuItem href="#oracao" onClick={closeMenu}>Oração & Reflexão</MenuItem>
               <MenuItem href="#contato" onClick={closeMenu}>Contato</MenuItem>
               <button 
                 className="w-full bg-red-600 text-white px-6 py-3 rounded-full hover:bg-red-700 transition-colors duration-200 font-semibold"
@@ -186,7 +145,7 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{ 
-            backgroundImage: 'url(https://i.imgur.com/ANjRutY.jpeg)',
+            backgroundImage: 'url(/img/hero.jpeg)',
           }}
         />
         <div className="absolute inset-0 bg-black bg-opacity-50" />
@@ -313,7 +272,7 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
           <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
             <div className="text-center lg:text-left">
               <img 
-                src="https://i.imgur.com/WhJBrI7.png" 
+                src="/img/pastor.png" 
                 alt="Pastor Dionísio Maciel" 
                 className="w-64 h-64 rounded-full mx-auto lg:mx-0 object-cover shadow-2xl"
               />
@@ -355,106 +314,6 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
                 className="rounded-lg"
                 title="Mensagem em Áudio - O que é ser Cristão"
               />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Oração & Reflexão Section */}
-      <section id="oracao" className="py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center text-gray-800 mb-2">
-            Oração e Reflexão
-          </h2>
-          <div className="text-center mb-16">
-            <Sparkles className="inline-block text-red-600 ml-2" size={32} />
-          </div>
-          
-          <div className="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
-            {/* Gerador de Oração */}
-            <div className="bg-gray-50 p-8 rounded-lg">
-              <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <Sparkles className="text-red-600" size={24} />
-                Me Ajude a Orar
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="prayer-topic" className="block text-sm font-medium text-gray-700 mb-2">
-                    Sobre o que você gostaria de orar?
-                  </label>
-                  <input
-                    id="prayer-topic"
-                    type="text"
-                    value={prayerTopic}
-                    onChange={(e) => setPrayerTopic(e.target.value)}
-                    placeholder="Ex: saúde, família, trabalho..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                </div>
-                <button
-                  onClick={generatePrayer}
-                  disabled={isPrayerLoading || !prayerTopic.trim()}
-                  className="w-full bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-200 font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isPrayerLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Gerando...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={20} />
-                      Gerar Oração
-                    </>
-                  )}
-                </button>
-                {prayerResult && (
-                  <div className="mt-6 p-4 bg-white border border-gray-200 rounded-lg">
-                    <h4 className="font-semibold text-gray-800 mb-2">Sua Oração:</h4>
-                    <p className="text-gray-600 leading-relaxed whitespace-pre-line">{prayerResult}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Gerador de Reflexão */}
-            <div className="bg-gray-50 p-8 rounded-lg">
-              <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <Sparkles className="text-red-600" size={24} />
-                Reflexão do Dia
-              </h3>
-              <div className="space-y-4">
-                <p className="text-gray-600">
-                  Receba uma palavra de edificação e encorajamento para o seu dia.
-                </p>
-                <button
-                  onClick={generateReflection}
-                  disabled={isReflectionLoading}
-                  className="w-full bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-200 font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isReflectionLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Gerando...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={20} />
-                      Gerar Reflexão do Dia
-                    </>
-                  )}
-                </button>
-                {reflectionResult && (
-                  <div className="mt-6 p-4 bg-white border border-gray-200 rounded-lg">
-                    <h4 className="font-semibold text-gray-800 mb-2">Reflexão de Hoje:</h4>
-                    <div className="text-gray-600 leading-relaxed">
-                      {reflectionResult.split('**').map((part, index) => 
-                        index % 2 === 1 ? <strong key={index}>{part}</strong> : part
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -528,7 +387,7 @@ Que este dia seja uma oportunidade de renovar sua fé e caminhar com coragem em 
           <div className="text-center space-y-8">
             <div>
               <img 
-                src="https://i.imgur.com/zlIM5kM.jpeg" 
+                src="/img/logo.jpeg" 
                 alt="Logo AD Templo Arthur Bernardes" 
                 className="h-16 w-auto mx-auto mb-4"
               />
