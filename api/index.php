@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Adab\Api\Controllers\AdminController;
 use Adab\Api\Controllers\AuthController;
+use Adab\Api\Controllers\MembrosController;
 use Adab\Api\Controllers\PublicController;
 use Adab\Api\Database;
 use Adab\Api\Json;
@@ -105,9 +106,23 @@ $app->group('/admin', function (RouteCollectorProxy $g) use ($pdo, $config) {
 
 // Rotas autenticadas: TODA rota de módulo deve ser registrada neste
 // grupo (CSRF + Auth aplicados na ordem correta pelo encadeamento).
+// GETs são abertos a todo perfil autenticado (lider_departamento tem
+// escopo aplicado dentro do controller — regra D5); escritas exigem
+// PerfilMiddleware explícito.
 $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
-    // Módulos serão registrados aqui, ex.:
-    // $g->group('/membros', ...)  ->add(PerfilMiddleware::para([...]))
+    $membros = new MembrosController($pdo);
+    $g->group('/membros', function (RouteCollectorProxy $m) use ($membros) {
+        $m->get('', [$membros, 'listar']);
+        $m->get('/{id}', [$membros, 'ver']);
+        $m->post('', [$membros, 'criar'])
+          ->add(PerfilMiddleware::para(['secretaria']));
+        $m->put('/{id}', [$membros, 'atualizar'])
+          ->add(PerfilMiddleware::para(['secretaria']));
+        $m->patch('/{id}/status', [$membros, 'status'])
+          ->add(PerfilMiddleware::para(['secretaria']));
+        $m->delete('/{id}', [$membros, 'remover'])
+          ->add(PerfilMiddleware::para([])); // lista vazia = só admin
+    });
 })->add(new CsrfMiddleware())->add(new AuthMiddleware($pdo));
 
 // ---------------------------------------------------------------------

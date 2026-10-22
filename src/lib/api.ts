@@ -129,3 +129,94 @@ export const publicApi = {
   programacao: () => apiFetch<ItemProgramacao[]>('/public/programacao'),
   eventos: () => apiFetch<EventoPublico[]>('/public/eventos'),
 };
+
+// ---------------------------------------------------------------------
+// Membros (M1)
+
+export type StatusMembro = 'ativo' | 'afastado' | 'transferido' | 'falecido' | 'disciplinado';
+
+export interface MembroListItem {
+  pessoa_id: number;
+  nome_completo: string;
+  telefone: string | null;
+  email: string | null;
+  status: StatusMembro;
+  data_status: string | null;
+  congregacao: string | null;
+  cargo_nome: string | null;
+}
+
+export interface PessoaPayload {
+  nome_completo: string;
+  nome_social?: string | null;
+  data_nascimento?: string | null;
+  sexo?: 'M' | 'F' | null;
+  estado_civil?: string | null;
+  conjuge_id?: number | null;
+  cpf?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+  observacoes?: string | null;
+}
+
+export interface MembroPayload {
+  numero_carteirinha?: string | null;
+  data_conversao?: string | null;
+  data_batismo?: string | null;
+  batizado_espirito_santo?: boolean;
+  congregacao?: string | null;
+  procedencia?: string | null;
+  cargo_id?: number | null;
+}
+
+export interface MembroDetalhe extends PessoaPayload {
+  pessoa_id: number;
+  status: StatusMembro;
+  data_status: string | null;
+  cargo_nome: string | null;
+  numero_carteirinha: string | null;
+  data_conversao: string | null;
+  data_batismo: string | null;
+  batizado_espirito_santo: number;
+  congregacao: string | null;
+  procedencia: string | null;
+  cargo_id: number | null;
+  departamentos?: { departamento_id: number; nome: string; funcao: string | null; data_inicio: string | null }[];
+}
+
+export const membrosApi = {
+  listar(params: { q?: string; status?: string; departamento_id?: number; pagina?: number; por_pagina?: number } = {}) {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '') {
+        qs.set(k, String(v));
+      }
+    }
+    return apiFetch<RespostaPaginada<MembroListItem>>(`/membros?${qs}`);
+  },
+  ver: (id: number) => apiFetch<MembroDetalhe>(`/membros/${id}`),
+  criar: (pessoa: PessoaPayload, membro: MembroPayload) =>
+    apiFetch<MembroDetalhe>('/membros', {
+      method: 'POST',
+      body: JSON.stringify({ pessoa, membro }),
+    }),
+  atualizar: (id: number, pessoa: PessoaPayload, membro: MembroPayload) =>
+    apiFetch<MembroDetalhe>(`/membros/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ pessoa, membro }),
+    }),
+  mudarStatus: (id: number, status: StatusMembro, data_status?: string) =>
+    apiFetch<MembroDetalhe>(`/membros/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, data_status }),
+    }),
+  remover: (id: number) =>
+    apiFetch<{ ok: true }>(`/membros/${id}`, { method: 'DELETE' }),
+};

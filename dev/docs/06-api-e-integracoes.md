@@ -28,18 +28,23 @@ Convenções:
 | POST | `/api/auth/redefinir` | público (token) |
 
 ### Membros
-| Método | Rota | Perfil |
-|--------|------|--------|
-| GET | `/api/membros?q=&status=&cargo_id=&departamento_id=&pagina=` | leitura p/ perfis autorizados |
-| POST | `/api/membros` | admin, secretaria |
-| GET | `/api/membros/{id}` | conforme escopo |
-| PUT | `/api/membros/{id}` | admin, secretaria |
-| POST | `/api/membros/{id}/status` | admin, secretaria |
-| POST | `/api/membros/{id}/foto` | admin, secretaria |
-| GET | `/api/membros/aniversariantes?mes=` | painel |
-| POST | `/api/membros/importar` (CSV) | admin, secretaria |
-| GET | `/api/membros/exportar.csv` | admin, secretaria |
-| GET/POST/PUT | `/api/departamentos[/...]` | admin, secretaria |
+
+Implementadas (M1): leitura aberta a todo perfil autenticado —
+`lider_departamento` recebe escopo automático p/ seus departamentos (D5).
+
+| Método | Rota | Perfil | Status |
+|--------|------|--------|--------|
+| GET | `/api/membros?q=&status=&cargo_id=&departamento_id=&pagina=&por_pagina=` | autenticado (lider: só seu depto) | ✅ |
+| GET | `/api/membros/{id}` | autenticado (lider: membro do seu depto) | ✅ |
+| POST | `/api/membros` `{pessoa, membro}` | admin, secretaria | ✅ |
+| PUT | `/api/membros/{id}` `{pessoa, membro}` | admin, secretaria | ✅ |
+| PATCH | `/api/membros/{id}/status` `{status, data_status?}` — ao sair de `ativo` desvincula deptos/EBD/usuário (D1) | admin, secretaria | ✅ |
+| DELETE | `/api/membros/{id}` soft delete | só admin | ✅ |
+| POST | `/api/membros/{id}/foto` | admin, secretaria | pendente (uploads) |
+| GET | `/api/membros/aniversariantes?mes=` | painel | pendente |
+| POST | `/api/membros/importar` (CSV) | admin, secretaria | pendente (D9) |
+| GET | `/api/membros/exportar.csv` | admin, secretaria | pendente |
+| GET/POST/PUT | `/api/departamentos[/...]` | admin, secretaria | pendente |
 
 ### Cultos
 | Método | Rota | Perfil |

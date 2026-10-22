@@ -1,0 +1,44 @@
+%% M1 Membros — CRUD + desvinculação D1 — revisado em 2026-10-21
+%% Fonte: api/index.php, api/src/Controllers/MembrosController.php,
+%%        api/src/Repositories/{Pessoa,Membro}Repository.php,
+%%        src/pages/admin/MembrosPage.tsx
+flowchart TD
+    subgraph ROTAS["/api/membros (grupo autenticado: Auth → CSRF)"]
+        GL["GET /membros?q=&status=&depto=&pagina="]
+        GV["GET /membros/{id}"]
+        PC["POST /membros<br/>(secretaria, admin)"]
+        PU["PUT /membros/{id}<br/>(secretaria, admin)"]
+        PS["PATCH /membros/{id}/status<br/>(secretaria, admin)"]
+        PD["DELETE /membros/{id}<br/>(só admin → soft delete)"]
+    end
+
+    GL --> ESC{"perfil =<br/>lider_departamento?"}
+    ESC -- sim --> DEP["limita a departamentos<br/>liderados (D5)"]
+    ESC -- não --> LST["listarPaginado<br/>{itens, pagina, por_pagina, total}"]
+    DEP --> LST
+    GV --> VPER{"lider e membro<br/>fora do depto?"}
+    VPER -- sim --> F403["403 SEM_PERMISSAO"]
+    VPER -- não --> VOK["pessoa + membro + deptos"]
+
+    PC --> VAL{"validar pessoa<br/>(nome*, sexo, email,<br/>uf, CPF com dígitos)"}
+    VAL -- inválido --> E400["400 VALIDACAO"]
+    VAL -- ok --> TX["TRANSAÇÃO:<br/>INSERT pessoas → INSERT membros"]
+    TX -- CPF dup --> E422["422 CPF_DUPLICADO"]
+    TX -- cart. dup --> E422B["422 CARTEIRINHA_DUPLICADA"]
+
+    PS --> SV{"status ∈ enum?"}
+    SV -- não --> E400
+    SV -- sim --> ST["mudarStatus (transação)"]
+    ST --> D1{"status ≠ 'ativo'?<br/>(regra D1)"}
+    D1 -- sim --> DESV["membro_departamentos → data_fim<br/>ebd_alunos → 'desistente'<br/>usuarios → ativo=0"]
+    D1 -- não --> OK["200 membro atualizado"]
+    DESV --> OK
+
+    subgraph FE["MembrosPage (/admin/membros)"]
+        LIST["tabela + busca + filtro status + paginação"]
+        FORM["Modal criar/editar<br/>(Field acessível)"]
+        STMOD["Modal status (aviso D1)"]
+        DEL["Confirmar exclusão (só admin)"]
+        LIST --> FORM & STMOD & DEL
+        FORM & STMOD & DEL -->|apiFetch + CSRF| ROTAS
+    end

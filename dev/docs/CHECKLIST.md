@@ -109,7 +109,13 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
 
 ## T2 — Módulos (ordem do plano de ação)
 
-- [ ] T2.1 M1 Membros (contrato → Repository → rotas → UI) — espinha dorsal
+- [~] T2.1 M1 Membros — núcleo feito: `PessoaRepository`/`MembroRepository`,
+      `MembrosController` (list paginado/ver/criar/atualizar/status/remover),
+      rotas no grupo autenticado, escopo D5 do líder, desvinculação D1,
+      `MembrosPage` + `membrosApi` + `MembrosIntegrationTest`.
+      Pendente: upload de foto, aniversariantes, importar/exportar CSV,
+      vínculo membro↔departamento e select de cargo na UI (precisam de
+      rotas /cargos e /departamentos)
 - [ ] T2.2 Gestão de usuários (admin)
 - [ ] T2.3 Site público dinâmico (programação/eventos via API) —
       WeeklySchedule já consome `/public/programacao`; falta seção Eventos

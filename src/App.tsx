@@ -71,7 +71,7 @@ const App: React.FC = () => {
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center">
             <img 
-              src="/img/logo.jpeg" 
+              src="/img/logo.jpeg"
               alt="Logo AD Templo Arthur Bernardes" 
               className="h-12 w-auto"
             />
@@ -272,7 +272,7 @@ const App: React.FC = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
             <div className="text-center lg:text-left">
               <img 
-                src="/img/pastor.png" 
+                src="/img/pastor.png"
                 alt="Pastor Dionísio Maciel" 
                 className="w-64 h-64 rounded-full mx-auto lg:mx-0 object-cover shadow-2xl"
               />
@@ -387,7 +387,7 @@ const App: React.FC = () => {
           <div className="text-center space-y-8">
             <div>
               <img 
-                src="/img/logo.jpeg" 
+                src="/img/logo.jpeg"
                 alt="Logo AD Templo Arthur Bernardes" 
                 className="h-16 w-auto mx-auto mb-4"
               />

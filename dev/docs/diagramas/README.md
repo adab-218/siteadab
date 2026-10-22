@@ -13,6 +13,7 @@ atualizados **no mesmo commit** de qualquer mudança que altere o fluxo
 | `migracoes.mmd` | Execução de migrations (token/CLI → lock → apply → registro) |
 | `navegacao-app.mmd` | Rotas React: site, login, redefinir, /admin + RequireAuth |
 | `site-publico.mmd` | Programação semanal e eventos públicos via API |
+| `membros.mmd` | M1: CRUD /membros, escopo D5 do líder, desvinculação D1 |
 
 ## Fluxos ainda sem diagrama (a criar quando implementados)
 
