@@ -23,11 +23,14 @@ final class MigrationsIntegrationTest extends TestCase
         $pdo = new PDO($dsn, getenv('ADAB_TEST_USER') ?: null, getenv('ADAB_TEST_PASS') ?: null, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         ]);
-        // Banco limpo para a migração "zerada" ser reproduzível
+        // Banco limpo para a migração "zerada" ser reproduzível.
+        // FK checks off: DROP não precisa respeitar ordem de referências.
+        $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
         foreach ($pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN) as $t) {
             $pdo->exec("DROP TABLE IF EXISTS `{$t}`");
             $pdo->exec("DROP VIEW IF EXISTS `{$t}`");
         }
+        $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
         return $pdo;
     }
 
