@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "predev": "node scripts/gerar-versoes.mjs",
     "build": "tsc -b && vite build",
+    "prebuild": "node scripts/gerar-versoes.mjs",
+    "versoes": "node scripts/gerar-versoes.mjs",
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview"

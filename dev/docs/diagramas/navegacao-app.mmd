@@ -7,6 +7,11 @@ flowchart TD
     RT --> HOME["/ → App (site público)"]
     HOME --> SCHED{"'Programação Semanal'?"}
     SCHED -- clique --> WS["WeeklySchedule (dialog)<br/>GET /api/public/programacao<br/>grid Seg–Dom da semana"]
+    HOME --> EVS["seção #eventos<br/>GET /api/public/eventos<br/>(oculta se vazia)"]
+    HOME --> FOOTER["rodapé: crédito<br/>Leon James dos Santos<br/>+ versão {VERSAO_ATUAL}"]
+    FOOTER -- clique na versão --> VER
+
+    RT --> VER["/versoes → VersoesPage<br/>(pública; lê src/lib/versoes.ts<br/>gerado do git log em prebuild)"]
 
     RT --> LOGIN["/login → LoginPage"]
     LOGIN --> LFORM{"modo"}

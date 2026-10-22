@@ -3,6 +3,8 @@ import { Menu, X, ChevronRight, Users, Heart, BookOpen, HandHeart, MapPin, Mail,
 import WeeklySchedule from './components/WeeklySchedule';
 import EventoPublicoCard from './components/EventoPublicoCard';
 import { EventoPublico, publicApi } from './lib/api';
+import { Link } from 'react-router-dom';
+import { VERSAO_ATUAL } from './lib/versoes';
 
 interface MenuItemProps {
   href: string;
@@ -422,6 +424,25 @@ const App: React.FC = () => {
               </p>
               <p className="text-gray-400 text-sm">
                 Av. Arthur Bernardes, 218 - Pratinha, Belém - PA, 66816-000
+              </p>
+              <p className="text-gray-500 text-sm mt-4">
+                Desenvolvido por{' '}
+                <a
+                  href="https://wa.me/5591981758645"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-300 hover:text-white underline-offset-4 hover:underline transition-colors"
+                >
+                  Leon James dos Santos
+                </a>{' '}
+                ·{' '}
+                <Link
+                  to="/versoes"
+                  className="font-mono text-gray-400 hover:text-white transition-colors"
+                  title="Histórico de versões"
+                >
+                  {VERSAO_ATUAL}
+                </Link>
               </p>
             </div>
 

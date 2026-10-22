@@ -36,3 +36,4 @@ api/vendor/
 uploads/*
 !uploads/.htaccess
 !uploads/.gitkeep
+src/lib/versoes.ts

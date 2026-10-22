@@ -12,6 +12,7 @@ import MembrosPage from './pages/admin/MembrosPage';
 import DepartamentosPage from './pages/admin/DepartamentosPage';
 import CultosPage from './pages/admin/CultosPage';
 import UsuariosPage from './pages/admin/UsuariosPage';
+import VersoesPage from './pages/VersoesPage';
 import EmBrevePage from './pages/admin/EmBrevePage';
 import './index.css';
 
@@ -23,6 +24,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<App />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
+          <Route path="/versoes" element={<VersoesPage />} />
           <Route
             path="/admin"
             element={
