@@ -95,7 +95,8 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
 
 ## OPS — manual/cPanel (não-código)
 
-- [ ] OPS.1 Criar usuário admin real (phpMyAdmin + seed OU script SQL dedicado)
+- [x] OPS.1 Admin criado via phpMyAdmin (login confirmado em prod);
+      `api/create-admin.php` commitado p/ bootstrap futuro via CLI
 - [ ] OPS.2 Configurar SMTP no cPanel + secrets (`SMTP_*`) p/ recuperação de senha
 - [ ] OPS.3 Backup do banco: commitar `cron/backup_db.php` + agendar cron no cPanel
 - [ ] OPS.4 Uptime monitor externo (UptimeRobot/Healthchecks) pingando `/api/health`
