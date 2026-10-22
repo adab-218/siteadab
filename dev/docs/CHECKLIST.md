@@ -115,7 +115,14 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       `MembrosPage` + `membrosApi` + `MembrosIntegrationTest`.
       Pendente: upload de foto, aniversariantes, importar/exportar CSV,
       vínculo membro↔departamento e select de cargo na UI (precisam de
-      rotas /cargos e /departamentos)
+      rotas /cargos e /departamentos) — /cargos e /departamentos criados (M2);
+      select de cargo e chips de depto já na UI. Faltam: foto, CSV, e vínculo
+      depto a partir da ficha do membro
+- [x] Departamentos + catálogos + aniversariantes — `GET /cargos`,
+      CRUD `/departamentos`, vínculo membro↔depto (D5: líder gerencia o
+      seu; D6: só membros; reativação após data_fim), `DepartamentosPage`,
+      `GET /membros/aniversariantes` + widget no Dashboard,
+      `DepartamentosIntegrationTest`
 - [ ] T2.2 Gestão de usuários (admin)
 - [ ] T2.3 Site público dinâmico (programação/eventos via API) —
       WeeklySchedule já consome `/public/programacao`; falta seção Eventos

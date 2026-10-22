@@ -1,0 +1,41 @@
+%% M2 Departamentos + catálogos — revisado em 2026-10-21
+%% Fonte: api/index.php, api/src/Controllers/DepartamentosController.php,
+%%        api/src/Repositories/DepartamentoRepository.php,
+%%        src/pages/admin/DepartamentosPage.tsx
+flowchart TD
+    subgraph ROTAS["grupo autenticado (Auth → CSRF)"]
+        GC["GET /cargos → catálogo p/ selects"]
+        GL["GET /departamentos?ativo="]
+        GV["GET /departamentos/{id}<br/>(+ membros[])"]
+        PC["POST /departamentos<br/>(secretaria, admin)"]
+        PU["PUT /departamentos/{id}<br/>(secretaria, admin)"]
+        PD["DELETE /departamentos/{id}<br/>→ ativo=0 (secretaria, admin)"]
+        AM["POST /departamentos/{id}/membros<br/>{pessoa_id, funcao, data_inicio}"]
+        RM["DELETE /departamentos/{id}/membros/{pessoa_id}"]
+    end
+
+    GL --> ESC{"lider_departamento? (D5)"}
+    ESC -- sim --> OWN["filtra: departamentos<br/>WHERE lider_id = eu"]
+    ESC -- não --> ALL["todos"]
+    GV --> ESC2{"lidera este depto?"}
+    ESC2 -- não --> F403["403 SEM_PERMISSAO"]
+
+    AM --> GER{"lider? → deve liderar<br/>este depto (D5)"}
+    GER -- não --> F403
+    GER -- ok --> D6{"pessoa_id é membro?<br/>(D6 + FK)"}
+    D6 -- não --> E400["400 VALIDACAO"]
+    D6 -- sim --> V{"vínculo existe?"}
+    V -- "ativo (data_fim NULL)" --> E422["422 VINCULO_EXISTENTE"]
+    V -- "encerrado" --> REA["reativa: data_fim=NULL<br/>(uq impede nova linha)"]
+    V -- "nenhum" --> INS["INSERT membro_departamentos"]
+    RM --> ENC["data_fim = hoje<br/>404 se sem vínculo ativo"]
+
+    PD --> GUARD{"membros ativos > 0?"}
+    GUARD -- sim --> E422B["422 VINCULOS_ATIVOS"]
+
+    subgraph FE["DepartamentosPage (/admin/departamentos)"]
+        LISTA["tabela: nome, líder, nº membros,<br/>status, ações"]
+        DET["Modal detalhe: membros +<br/>vincular (busca /membros)<br/>+ remover vínculo"]
+        FORM["Modal criar/editar<br/>(nome, descrição, líder)"]
+        LISTA --> DET & FORM
+    end

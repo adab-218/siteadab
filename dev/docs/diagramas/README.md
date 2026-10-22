@@ -14,6 +14,7 @@ atualizados **no mesmo commit** de qualquer mudança que altere o fluxo
 | `navegacao-app.mmd` | Rotas React: site, login, redefinir, /admin + RequireAuth |
 | `site-publico.mmd` | Programação semanal e eventos públicos via API |
 | `membros.mmd` | M1: CRUD /membros, escopo D5 do líder, desvinculação D1 |
+| `departamentos.mmd` | M2: CRUD /departamentos + vínculo de membros (D5/D6) |
 
 ## Fluxos ainda sem diagrama (a criar quando implementados)
 

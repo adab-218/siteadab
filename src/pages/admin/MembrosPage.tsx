@@ -4,6 +4,8 @@ import Modal from '../../components/ui/Modal';
 import Field from '../../components/ui/Field';
 import {
   ApiError,
+  Cargo,
+  cargosApi,
   MembroListItem,
   MembroPayload,
   membrosApi,
@@ -53,6 +55,12 @@ const MembrosPage: React.FC = () => {
   const [novoStatus, setNovoStatus] = useState<StatusMembro>('ativo');
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState('');
+  const [cargos, setCargos] = useState<Cargo[]>([]);
+  const [detalheDeptos, setDetalheDeptos] = useState<{ nome: string; funcao: string | null }[]>([]);
+
+  useEffect(() => {
+    cargosApi.listar().then(setCargos).catch(() => setCargos([]));
+  }, []);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -82,6 +90,7 @@ const MembrosPage: React.FC = () => {
   const abrirNovo = () => {
     setPessoa(PESSOA_VAZIA);
     setMembro(MEMBRO_VAZIO);
+    setDetalheDeptos([]);
     setErroForm('');
     setModalForm({});
   };
@@ -117,6 +126,9 @@ const MembrosPage: React.FC = () => {
         procedencia: m.procedencia,
         cargo_id: m.cargo_id,
       });
+      setDetalheDeptos(
+        (m.departamentos ?? []).map((d) => ({ nome: d.nome, funcao: d.funcao }))
+      );
       setModalForm({ id });
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao abrir membro.');
@@ -346,6 +358,20 @@ const MembrosPage: React.FC = () => {
               <Field id="m-bat" label="Batismo" type="date" value={membro.data_batismo ?? ''} onChange={setM('data_batismo')} />
               <Field id="m-cong" label="Congregação" value={membro.congregacao ?? ''} onChange={setM('congregacao')} />
               <Field id="m-proc" label="Procedência" value={membro.procedencia ?? ''} onChange={setM('procedencia')} />
+              <div>
+                <label htmlFor="m-cargo" className="block text-sm font-medium text-gray-700 mb-1">Cargo</label>
+                <select
+                  id="m-cargo"
+                  value={membro.cargo_id ?? ''}
+                  onChange={(e) => setMembro((m) => ({ ...m, cargo_id: e.target.value ? Number(e.target.value) : null }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="">—</option>
+                  {cargos.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </select>
+              </div>
               <label className="flex items-center gap-2 text-sm text-gray-700 mt-6">
                 <input
                   type="checkbox"
@@ -356,6 +382,22 @@ const MembrosPage: React.FC = () => {
                 Batizado(a) no Espírito Santo
               </label>
             </fieldset>
+
+            {detalheDeptos.length > 0 && (
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Departamentos</h3>
+                <div className="flex flex-wrap gap-2">
+                  {detalheDeptos.map((d) => (
+                    <span key={d.nome} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                      {d.nome}{d.funcao ? ` · ${d.funcao}` : ''}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Gerencie os vínculos na página Departamentos.
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-2">
               <button type="submit" disabled={salvando} className="flex-1 bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-60">

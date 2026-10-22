@@ -28,6 +28,7 @@ flowchart TD
     HAS -- sim --> LAYOUT["AdminLayout<br/>sidebar (Dashboard, Membros,<br/>Cultos, Eventos, Ações, EBD)<br/>+ logout → /login"]
     LAYOUT --> IDX["index → DashboardPage"]
     LAYOUT --> MB["/admin/membros → MembrosPage<br/>(tabela + CRUD via /api/membros)"]
+    LAYOUT --> DP["/admin/departamentos → DepartamentosPage<br/>(CRUD + vínculos via /api/departamentos)"]
     LAYOUT --> MOD["/admin/:modulo → EmBrevePage<br/>(módulos em construção)"]
 
     RT --> FALL["* → Navigate /"]

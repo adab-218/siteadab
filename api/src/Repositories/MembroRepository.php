@@ -170,6 +170,19 @@ final class MembroRepository
                   ->execute([$pessoaId]);
     }
 
+    /** Aniversariantes do mês (membros ativos). @return array<int,array<string,mixed>> */
+    public function aniversariantes(int $mes): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT pessoa_id, nome_completo, data_nascimento, dia
+               FROM v_aniversariantes_mes
+              WHERE mes = ?
+              ORDER BY dia, nome_completo'
+        );
+        $stmt->execute([$mes]);
+        return $stmt->fetchAll();
+    }
+
     /** Departamentos liderados por uma pessoa (escopo D5). @return int[] */
     public function departamentosLiderados(int $pessoaId): array
     {

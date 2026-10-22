@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Adab\Api\Controllers\AdminController;
 use Adab\Api\Controllers\AuthController;
+use Adab\Api\Controllers\CatalogosController;
+use Adab\Api\Controllers\DepartamentosController;
 use Adab\Api\Controllers\MembrosController;
 use Adab\Api\Controllers\PublicController;
 use Adab\Api\Database;
@@ -110,9 +112,12 @@ $app->group('/admin', function (RouteCollectorProxy $g) use ($pdo, $config) {
 // escopo aplicado dentro do controller — regra D5); escritas exigem
 // PerfilMiddleware explícito.
 $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
+    $g->get('/cargos', [new CatalogosController($pdo), 'cargos']);
+
     $membros = new MembrosController($pdo);
     $g->group('/membros', function (RouteCollectorProxy $m) use ($membros) {
         $m->get('', [$membros, 'listar']);
+        $m->get('/aniversariantes', [$membros, 'aniversariantes']);
         $m->get('/{id}', [$membros, 'ver']);
         $m->post('', [$membros, 'criar'])
           ->add(PerfilMiddleware::para(['secretaria']));
@@ -122,6 +127,24 @@ $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
           ->add(PerfilMiddleware::para(['secretaria']));
         $m->delete('/{id}', [$membros, 'remover'])
           ->add(PerfilMiddleware::para([])); // lista vazia = só admin
+    });
+
+    $deptos = new DepartamentosController($pdo);
+    $g->group('/departamentos', function (RouteCollectorProxy $d) use ($deptos) {
+        $d->get('', [$deptos, 'listar']);
+        $d->get('/{id}', [$deptos, 'ver']);
+        $d->post('', [$deptos, 'criar'])
+          ->add(PerfilMiddleware::para(['secretaria']));
+        $d->put('/{id}', [$deptos, 'atualizar'])
+          ->add(PerfilMiddleware::para(['secretaria']));
+        $d->delete('/{id}', [$deptos, 'remover'])
+          ->add(PerfilMiddleware::para(['secretaria']));
+        // Vínculo de membros: secretaria/admin ou o próprio líder do
+        // departamento (D5 — o controller valida a liderança por registro).
+        $d->post('/{id}/membros', [$deptos, 'adicionarMembro'])
+          ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
+        $d->delete('/{id}/membros/{pessoa_id}', [$deptos, 'removerMembro'])
+          ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
     });
 })->add(new CsrfMiddleware())->add(new AuthMiddleware($pdo));
 

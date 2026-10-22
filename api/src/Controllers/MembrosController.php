@@ -151,6 +151,19 @@ final class MembrosController
         return Json::resposta($response, ['data' => $this->membros->buscarComPessoa($id)]);
     }
 
+    /** GET /membros/aniversariantes?mes=N — padrão: mês corrente. */
+    public function aniversariantes(Request $request, Response $response): Response
+    {
+        $mes = (int) ($request->getQueryParams()['mes'] ?? date('n'));
+        if ($mes < 1 || $mes > 12) {
+            return Json::erro($response, 'VALIDACAO', 'mes deve ser 1-12.', 400);
+        }
+        return Json::resposta($response, ['data' => [
+            'mes' => $mes,
+            'itens' => $this->membros->aniversariantes($mes),
+        ]]);
+    }
+
     public function remover(Request $request, Response $response, array $args): Response
     {
         $id = (int) $args['id'];

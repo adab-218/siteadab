@@ -44,7 +44,25 @@ Implementadas (M1): leitura aberta a todo perfil autenticado —
 | GET | `/api/membros/aniversariantes?mes=` | painel | pendente |
 | POST | `/api/membros/importar` (CSV) | admin, secretaria | pendente (D9) |
 | GET | `/api/membros/exportar.csv` | admin, secretaria | pendente |
-| GET/POST/PUT | `/api/departamentos[/...]` | admin, secretaria | pendente |
+
+### Departamentos e catálogos (M2)
+
+Leitura: todo perfil autenticado; `lider_departamento` recebe só os
+departamentos que lidera (D5). Vínculo só aceita membros (D6) — um vínculo
+encerrado é reativado (`data_fim=NULL`) por causa de
+`uq_md_pessoa_departamento`.
+
+| Método | Rota | Perfil | Status |
+|--------|------|--------|--------|
+| GET | `/api/cargos` | autenticado | ✅ |
+| GET | `/api/departamentos?ativo=` | autenticado (lider: só os seus) | ✅ |
+| GET | `/api/departamentos/{id}` (inclui `membros[]`) | autenticado (lider: só se lidera) | ✅ |
+| POST | `/api/departamentos` `{nome, descricao?, lider_id?}` | admin, secretaria | ✅ |
+| PUT | `/api/departamentos/{id}` | admin, secretaria | ✅ |
+| DELETE | `/api/departamentos/{id}` — desativa; 422 `VINCULOS_ATIVOS` se tem membros | admin, secretaria | ✅ |
+| POST | `/api/departamentos/{id}/membros` `{pessoa_id, funcao?, data_inicio?}` | admin, secretaria, líder do depto | ✅ |
+| DELETE | `/api/departamentos/{id}/membros/{pessoa_id}` — encerra vínculo (`data_fim`) | admin, secretaria, líder do depto | ✅ |
+| GET | `/api/membros/aniversariantes?mes=` | autenticado | ✅ |
 
 ### Cultos
 | Método | Rota | Perfil |

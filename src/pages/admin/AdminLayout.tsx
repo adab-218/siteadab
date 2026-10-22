@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Calendar, Church, HandHeart, LayoutDashboard, LogOut, Users, GraduationCap } from 'lucide-react';
+import { Calendar, Church, HandHeart, LayoutDashboard, LogOut, Network, Users, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/membros', label: 'Membros', icon: Users },
+  { to: '/admin/departamentos', label: 'Departamentos', icon: Network },
   { to: '/admin/cultos', label: 'Cultos', icon: Church },
   { to: '/admin/eventos', label: 'Eventos', icon: Calendar },
   { to: '/admin/acoes', label: 'Ações', icon: HandHeart },

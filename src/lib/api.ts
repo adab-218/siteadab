@@ -219,4 +219,66 @@ export const membrosApi = {
     }),
   remover: (id: number) =>
     apiFetch<{ ok: true }>(`/membros/${id}`, { method: 'DELETE' }),
+  aniversariantes: (mes?: number) =>
+    apiFetch<{ mes: number; itens: Aniversariante[] }>(
+      `/membros/aniversariantes${mes ? `?mes=${mes}` : ''}`
+    ),
+};
+
+export interface Aniversariante {
+  pessoa_id: number;
+  nome_completo: string;
+  data_nascimento: string;
+  dia: number;
+}
+
+// ---------------------------------------------------------------------
+// Departamentos (M2) e catálogos
+
+export interface Cargo {
+  id: number;
+  nome: string;
+  ordem: number;
+}
+
+export interface Departamento {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  lider_id: number | null;
+  lider_nome: string | null;
+  ativo: number;
+  total_membros: number;
+  membros?: DepartamentoMembro[];
+  vinculo?: 'inserido' | 'reativado';
+}
+
+export interface DepartamentoMembro {
+  pessoa_id: number;
+  nome_completo: string;
+  funcao: string | null;
+  data_inicio: string | null;
+}
+
+export const cargosApi = {
+  listar: () => apiFetch<Cargo[]>('/cargos'),
+};
+
+export const departamentosApi = {
+  listar: (apenasAtivos?: boolean) =>
+    apiFetch<Departamento[]>(`/departamentos${apenasAtivos !== undefined ? `?ativo=${apenasAtivos}` : ''}`),
+  ver: (id: number) => apiFetch<Departamento>(`/departamentos/${id}`),
+  criar: (dados: { nome: string; descricao?: string; lider_id?: number }) =>
+    apiFetch<Departamento>('/departamentos', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizar: (id: number, dados: { nome?: string; descricao?: string; lider_id?: number | null; ativo?: boolean }) =>
+    apiFetch<Departamento>(`/departamentos/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
+  remover: (id: number) =>
+    apiFetch<{ ok: true }>(`/departamentos/${id}`, { method: 'DELETE' }),
+  adicionarMembro: (id: number, pessoa_id: number, funcao?: string, data_inicio?: string) =>
+    apiFetch<Departamento>(`/departamentos/${id}/membros`, {
+      method: 'POST',
+      body: JSON.stringify({ pessoa_id, funcao, data_inicio }),
+    }),
+  removerMembro: (id: number, pessoa_id: number) =>
+    apiFetch<{ ok: true }>(`/departamentos/${id}/membros/${pessoa_id}`, { method: 'DELETE' }),
 };
