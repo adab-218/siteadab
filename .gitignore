@@ -37,3 +37,9 @@ uploads/*
 !uploads/.htaccess
 !uploads/.gitkeep
 src/lib/versoes.ts
+
+# artefatos de teste manual (curl/QA)
+body.json
+login.json
+*_cookies.txt
+*.http
