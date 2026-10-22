@@ -10,8 +10,8 @@ use Slim\Psr7\Factory\StreamFactory;
 use Slim\Psr7\UploadedFile;
 
 /**
- * Validação de upload por conteúdo (finfo) — não confia no nome/extensão
- * que o cliente enviou. Filesystem apenas (sem banco).
+ * Validação de upload por conteúdo (getimagesize) — não confia no
+ * nome/extensão que o cliente enviou. Filesystem apenas (sem banco).
  */
 final class UploadsTest extends TestCase
 {

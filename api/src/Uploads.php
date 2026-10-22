@@ -9,8 +9,8 @@ use Psr\Http\Message\UploadedFileInterface;
 /**
  * Salvamento seguro de uploads (fotos de membros, banners de eventos).
  *
- * - Apenas imagens: jpeg/png/webp, validadas por conteúdo (finfo), nunca
- *   pela extensão do nome original.
+ * - Apenas imagens: jpeg/png/webp, validadas por conteúdo
+ *   (getimagesize), nunca pela extensão do nome original.
  * - Tamanho máx. 2 MB.
  * - Nome gerado no servidor (prefixo + aleatório); /uploads/ tem .htaccess
  *   que nega execução de scripts.
@@ -43,8 +43,11 @@ final class Uploads
             throw new \RuntimeException('ARQUIVO_GRANDE');
         }
 
+        // getimagesize valida o conteúdo (não a extensão do nome) e não
+        // depende da ext fileinfo — ausente em alguns hosts compartilhados
         $tmp = $file->getStream()->getMetadata('uri');
-        $mime = is_string($tmp) ? (new \finfo(FILEINFO_MIME_TYPE))->file($tmp) : false;
+        $img = is_string($tmp) && is_file($tmp) ? @getimagesize($tmp) : false;
+        $mime = is_array($img) ? ($img['mime'] ?? null) : null;
         $ext = is_string($mime) ? (self::MIME[$mime] ?? null) : null;
         if ($ext === null) {
             throw new \RuntimeException('TIPO_INVALIDO');
