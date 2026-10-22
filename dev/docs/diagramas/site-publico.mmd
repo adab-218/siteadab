@@ -1,0 +1,25 @@
+%% Site público — programação e eventos — revisado em 2026-10-21
+%% Fonte: api/migrations/0006-0007 (v_programacao_publica),
+%%        api/src/Controllers/PublicController.php,
+%%        api/src/Repositories/ProgramacaoRepository.php,
+%%        src/components/WeeklySchedule.tsx
+flowchart TD
+    subgraph DB["MySQL — fonte da programação"]
+        C["cultos + tipos_culto<br/>(data ≥ hoje, tipo ativo)"]
+        E["eventos<br/>(publico=1, não cancelado,<br/>não deletado, vigente)"]
+        C --> V["v_programacao_publica<br/>(UNION ALL)"]
+        E --> V
+        E --> ET["tabela eventos<br/>(query direta p/ /eventos)"]
+    end
+
+    subgraph API["API pública (sem sessão)"]
+        V --> P1["ProgramacaoRepository.programacaoPublica"]
+        ET --> P2["ProgramacaoRepository.eventosPublicos"]
+        P1 --> PC["GET /api/public/programacao<br/>→ ItemProgramacao[]"]
+        P2 --> PV["GET /api/public/eventos<br/>→ EventoPublico[]"]
+    end
+
+    subgraph FE["Frontend"]
+        PC --> WS["WeeklySchedule:<br/>filtra itens da semana exibida<br/>→ agrupa por data → colunas Seg–Dom<br/>estados: carregando / erro / vazio"]
+        PV --> EV["seção Eventos do site<br/>(consumo futuro — ver CHECKLIST T2.3)"]
+    end

@@ -1,0 +1,32 @@
+%% Navegação e guards do frontend — revisado em 2026-10-21
+%% Fonte: src/main.tsx, src/routes/RequireAuth.tsx,
+%%        src/lib/auth-context.tsx, src/App.tsx
+flowchart TD
+    BOOT["BrowserRouter → AuthProvider:<br/>useEffect → auth.me()<br/>carregando=true → usuario|null"] --> RT["Routes"]
+
+    RT --> HOME["/ → App (site público)"]
+    HOME --> SCHED{"'Programação Semanal'?"}
+    SCHED -- clique --> WS["WeeklySchedule (dialog)<br/>GET /api/public/programacao<br/>grid Seg–Dom da semana"]
+
+    RT --> LOGIN["/login → LoginPage"]
+    LOGIN --> LFORM{"modo"}
+    LFORM -- login --> LPOST["auth.login(email, senha)<br/>→ guarda csrf + setUsuario"]
+    LPOST -- ok --> NAV["navigate(state.from ?? '/admin')"]
+    LPOST -- erro --> LERR["exibe ApiError"]
+    LFORM -- 'Esqueci senha' --> REC["auth.recuperar(email)<br/>→ mensagem neutra"]
+
+    RT --> RESET["/redefinir-senha?token= →<br/>RedefinirSenhaPage"]
+    RESET --> RS["auth.redefinir(token, senha ≥10)"]
+    RS -- ok --> LOGIN
+    RS -- erro --> RERR["exibe erro"]
+
+    RT --> ADMIN["/admin → RequireAuth"]
+    ADMIN --> GUARD{"carregando?"}
+    GUARD -- sim --> SPIN["'Carregando…'"]
+    GUARD -- não --> HAS{"usuario?"}
+    HAS -- null --> REDIR["Navigate → /login<br/>state.from = /admin"]
+    HAS -- sim --> LAYOUT["AdminLayout<br/>sidebar (Dashboard, Membros,<br/>Cultos, Eventos, Ações, EBD)<br/>+ logout → /login"]
+    LAYOUT --> IDX["index → DashboardPage"]
+    LAYOUT --> MOD["/admin/:modulo → EmBrevePage<br/>(módulos em construção)"]
+
+    RT --> FALL["* → Navigate /"]

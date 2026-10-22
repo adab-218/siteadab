@@ -58,12 +58,18 @@ para fluxo completo, DoR/DoD e política de paralelismo):
 - `code-reviewer` / `reviewer` — revisão de correção e convenções
 - `security-reviewer` — auditoria independente (somente leitura)
 - `devops-release-engineer` — release, observabilidade e rollback
+- `process-documenter` — diagramas Mermaid (`dev/docs/diagramas/*.mmd`)
 
 Regras de delegação: quem implementa não aprova sozinho o próprio
 trabalho (revisão independente); dois agentes não editam o mesmo arquivo
 simultaneamente; auditorias read-only podem rodar em background;
 nenhum deploy/migração/operação em produção sem autorização humana
 explícita. Checklist de aceite: `docs/ACCEPTANCE_CHECKLIST.md`.
+
+Diagramas de processo: mudanças que alterem fluxos (rotas, middlewares,
+passos de workflow, transições de estado, guards de navegação) devem
+atualizar `dev/docs/diagramas/*.mmd` no mesmo commit — usar o agente
+`process-documenter` ou a skill `/process-diagrams` para convenções.
 
 ## Skills disponíveis
 

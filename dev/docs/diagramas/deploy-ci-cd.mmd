@@ -1,0 +1,17 @@
+%% Pipeline CI + Deploy — revisado em 2026-10-21
+%% Fonte: .github/workflows/ci.yml, .github/workflows/deploy.yml
+flowchart TD
+    PUSH["push → master"] --> CI["Workflow CI<br/>2 jobs paralelos"]
+    PUSH --> DEP["Workflow Deploy<br/>(job único, timeout 20min)"]
+
+    CI --> CIF["job frontend:<br/>npm ci → lint → tsc -b → vitest → build"]
+    CI --> CIA["job api (PHP 8.3, pdo_mysql+pdo_sqlite):<br/>composer install → composer test (PHPUnit)"]
+
+    DEP --> D1["1. Verificação completa<br/>(idêntica ao CI)"]
+    D1 --> D2["2. Composer: install + test →<br/>reinstall --no-dev (autoload otimizado)"]
+    D2 --> D3["3. Gerar api/config.php:<br/>template + secrets via PHP var_export<br/>+ php -l (aborta se inválido)"]
+    D3 --> D4["4. Montar deploy_pkg/<br/>(dist + .htaccess + api{index,.htaccess,src,vendor,migrations,config} + uploads/.htaccess)"]
+    D4 --> D5["5. FTP-Deploy-Action<br/>FTPS porta 21 → server-dir /"]
+    D5 --> D6["6. POST /api/admin/migrate<br/>X-Migrate-Token · retry ×5 (5s)"]
+    D6 --> D7["7. Smoke test:<br/>GET / → 200 (retry ×5) + GET /api/health"]
+    D7 --> OK["Produção atualizada"]

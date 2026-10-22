@@ -1,0 +1,83 @@
+%% Autenticação — revisado em 2026-10-21
+%% Fonte: api/src/Controllers/AuthController.php, api/index.php,
+%%        src/lib/api.ts, src/lib/auth-context.tsx
+sequenceDiagram
+    actor U as Usuário
+    participant F as Frontend (api.ts)
+    participant AC as AuthController
+    participant MW as AuthMiddleware
+    participant T as TentativaLoginRepository
+    participant R as UsuarioRepository
+    participant S as Sessão PHP
+    participant M as SMTP (PHPMailer)
+
+    Note over U,M: Login — POST /api/auth/login
+    U->>F: e-mail + senha
+    F->>AC: POST /auth/login
+    AC->>T: contarPorEmailEIp + contarPorIp (janela 15min)
+    alt ≥5 tentativas (e-mail+IP) ou ≥30 (IP)
+        AC-->>F: 429 RATE_LIMIT
+    else dentro do limite
+        AC->>R: buscarPorEmail (JOIN pessoas)
+        alt usuário não existe
+            AC->>AC: password_verify em DUMMY_HASH (paridade de tempo)
+            AC->>T: registrar (sha256 do e-mail + IP; purge ~5%)
+            AC-->>F: 401 CREDENCIAIS
+        else inativo ou senha incorreta
+            AC->>T: registrar
+            AC-->>F: 401 CREDENCIAIS
+        else credenciais ok
+            AC->>T: limpar tentativas (e-mail+IP)
+            AC->>R: registrarLogin (ultimo_login_em)
+            AC->>S: session_regenerate_id + usuario + csrf
+            AC-->>F: 200 {usuario, csrf} + cookie httpOnly SameSite=Lax
+            F->>F: guarda csrfToken em memória
+        end
+    end
+
+    Note over U,M: Bootstrap de sessão — GET /api/auth/me (AuthProvider)
+    F->>MW: GET /auth/me (cookie de sessão)
+    MW->>R: SELECT ativo, perfil WHERE id = sessão
+    alt sem sessão ou usuário inativo/inexistente
+        MW-->>F: 401 NAO_AUTENTICADO (sessão limpa)
+    else ok
+        MW->>S: atualiza perfil da sessão (valor do banco)
+        MW->>AC: repassa
+        AC-->>F: 200 {usuario, csrf}
+    end
+
+    Note over U,M: Mutações autenticadas
+    F->>MW: POST/PUT/DELETE (cookie + X-CSRF-Token)
+    MW->>S: AuthMiddleware + CsrfMiddleware (token = sessão)
+    alt CSRF ausente/inválido
+        MW-->>F: 403 CSRF_INVALIDO
+    end
+
+    Note over U,M: Logout — POST /api/auth/logout
+    F->>AC: POST /auth/logout
+    AC->>S: limpa $_SESSION + expira cookie (samesite) + destroy
+    AC-->>F: 200 {ok}
+
+    Note over U,M: Recuperar senha — POST /api/auth/recuperar
+    F->>AC: POST /auth/recuperar {email}
+    AC->>T: mesmos limites do login (e-mail+IP e IP)
+    alt dentro do limite
+        AC->>T: registrar tentativa
+        AC->>R: idAtivoPorEmail
+        alt usuário ativo existe
+            AC->>R: definirResetToken (SHA-256 do token, +1h)
+            AC->>M: e-mail com link /redefinir-senha?token=...
+            Note over M: smtp=null → apenas log "NÃO enviado" (sem token)
+        end
+        AC-->>F: 200 mensagem neutra (não revela se e-mail existe)
+    end
+
+    Note over U,M: Redefinir senha — POST /api/auth/redefinir
+    F->>AC: POST /auth/redefinir {token, senha ≥10}
+    AC->>R: consumirResetToken (SHA-256, uso único, expira 1h)
+    alt token inválido/expirado
+        AC-->>F: 400 TOKEN_INVALIDO
+    else ok
+        AC->>R: senha_hash atualizada (password_hash)
+        AC-->>F: 200 {ok}
+    end

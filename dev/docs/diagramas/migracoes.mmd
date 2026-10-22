@@ -1,0 +1,48 @@
+%% Execução de migrations — revisado em 2026-10-21
+%% Fonte: api/src/Migrator.php, api/src/Controllers/AdminController.php,
+%%        api/migrate.php
+sequenceDiagram
+    participant C as Chamador (deploy/CLI/admin)
+    participant AC as AdminController::migrate
+    participant MG as Migrator
+    participant DB as MySQL
+
+    C->>AC: POST /api/admin/migrate<br/>(X-Migrate-Token OU sessão admin)
+    Note over AC: alternativa CLI: php migrate.php
+    alt sem token e sem sessão admin
+        AC-->>C: 403 SEM_PERMISSAO
+    else autorizado
+        AC->>MG: run()
+        MG->>DB: CREATE TABLE IF NOT EXISTS migrations
+        MG->>DB: SELECT GET_LOCK('adab_migrator', 15)
+        alt lock indisponível
+            MG-->>AC: RuntimeException
+            AC-->>C: 500 MIGRATION_FALHOU
+        else lock obtido
+            MG->>DB: SELECT arquivo FROM migrations (aplicadas)
+            loop cada api/migrations/*.sql (ordem crescente)
+                alt já aplicada
+                    MG->>MG: pula
+                else pendente
+                    MG->>MG: split statements por ";" fim de linha
+                    loop cada statement
+                        MG->>DB: exec
+                        alt falha
+                            MG-->>AC: RuntimeException<br/>"{arquivo} statement #N" (parcial possível)
+                        end
+                    end
+                    MG->>DB: INSERT INTO migrations (arquivo)
+                end
+            end
+            MG->>DB: RELEASE_LOCK (finally)
+            AC-->>C: 200 {data:{aplicadas[], total}}
+        end
+    end
+
+    Note over C,DB: Seed — php migrate.php --seed
+    C->>MG: --seed
+    alt config['env'] !== 'dev'
+        MG-->>C: recusa (seed tem credenciais de teste)
+    else dev
+        MG->>DB: exec seed.sql (statement a statement)
+    end

@@ -1,0 +1,22 @@
+%% Fluxo de requisição HTTP na API — revisado em 2026-10-21
+%% Fonte: .htaccess, api/.htaccess, api/index.php, api/src/Json.php
+flowchart TD
+    REQ["Cliente → HTTPS adab.teo.br/api/*"] --> HT[".htaccess raiz:<br/>RewriteRule ^api(/.*)?$ → api/index.php"]
+    HT --> CFG{"api/config.php<br/>existe?"}
+    CFG -- não --> E1["500 CONFIG_MISSING (Json::emit)"]
+    CFG -- sim --> HTTPS["Detecta HTTPS<br/>(HTTPS ou X-Forwarded-Proto)"]
+    HTTPS --> LAZY{"Path é /api/health<br/>ou /api/public/*?"}
+    LAZY -- sim --> DB
+    LAZY -- não --> SES["session_save_path (config)<br/>+ session_name + cookie params<br/>+ session_start()"]
+    SES --> DB{"Database::pdo<br/>(try/catch)"}
+    DB -- falha --> E2["503 INDISPONIVEL"]
+    DB -- ok --> SLIM["Slim App<br/>basePath /api + bodyParsing"]
+
+    SLIM --> R1["GET /health → {data:{ok:true}}"]
+    SLIM --> R2["/auth/* → AuthController<br/>(me tem AuthMiddleware extra)"]
+    SLIM --> R3["/public/* → PublicController<br/>(programacao, eventos)"]
+    SLIM --> R4["/admin/migrate → AdminController<br/>(X-Migrate-Token OU sessão admin)"]
+    SLIM --> R5["grupo '' → AuthMiddleware → CsrfMiddleware<br/>→ rotas de módulos (M1+ futuras)"]
+    SLIM --> EH["Error handler → 400/404/405/500"]
+
+    R1 & R2 & R3 & R4 & R5 & EH --> JSON["Json::resposta<br/>{data:...} ou {error:{code,message}}<br/>Content-Type json + Cache-Control: no-store"]
