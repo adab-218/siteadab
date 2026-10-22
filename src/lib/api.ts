@@ -459,3 +459,88 @@ export const eventosApi = {
   removerAtividade: (id: number, aid: number) =>
     apiFetch<{ ok: true }>(`/eventos/${id}/atividades/${aid}`, { method: 'DELETE' }),
 };
+
+// ---------------------------------------------------------------------
+// Ações (M5)
+
+export type AcaoTipo = 'social' | 'evangelistica' | 'outra';
+export type AcaoStatus = 'planejada' | 'em_andamento' | 'realizada' | 'cancelada';
+export type AcaoPapel = 'coordenador' | 'voluntario';
+
+export interface Acao {
+  id: number;
+  nome: string;
+  tipo: AcaoTipo;
+  data_inicio: string | null;
+  data_fim: string | null;
+  local: string | null;
+  objetivo: string | null;
+  resultado: string | null;
+  departamento_id: number | null;
+  departamento_nome?: string | null;
+  status: AcaoStatus;
+  total_voluntarios?: number;
+  total_beneficiarios?: number;
+  voluntarios?: AcaoVoluntario[];
+  beneficiarios?: AcaoBeneficiario[];
+}
+
+export interface AcaoVoluntario {
+  pessoa_id: number;
+  nome_completo: string;
+  papel: AcaoPapel;
+}
+
+export interface AcaoBeneficiario {
+  id: number;
+  nome: string;
+  contato: string | null;
+  observacao: string | null;
+}
+
+export interface AcaoPayload {
+  nome: string;
+  tipo: AcaoTipo;
+  data_inicio?: string | null;
+  data_fim?: string | null;
+  local?: string | null;
+  objetivo?: string | null;
+  resultado?: string | null;
+  departamento_id?: number | null;
+  status?: AcaoStatus;
+}
+
+export const acoesApi = {
+  listar(params: { de?: string; ate?: string; tipo?: string; status?: string; departamento_id?: number; pagina?: number; por_pagina?: number } = {}) {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '') {
+        qs.set(k, String(v));
+      }
+    }
+    return apiFetch<RespostaPaginada<Acao>>(`/acoes?${qs}`);
+  },
+  ver: (id: number) => apiFetch<Acao>(`/acoes/${id}`),
+  criar: (dados: AcaoPayload) =>
+    apiFetch<Acao>('/acoes', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizar: (id: number, dados: Partial<AcaoPayload>) =>
+    apiFetch<Acao>(`/acoes/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
+  remover: (id: number) =>
+    apiFetch<{ ok: true }>(`/acoes/${id}`, { method: 'DELETE' }),
+
+  vincularVoluntario: (id: number, pessoa_id: number, papel: AcaoPapel = 'voluntario') =>
+    apiFetch<AcaoVoluntario[]>(`/acoes/${id}/voluntarios`, {
+      method: 'POST',
+      body: JSON.stringify({ pessoa_id, papel }),
+    }),
+  desvincularVoluntario: (id: number, pessoa_id: number) =>
+    apiFetch<AcaoVoluntario[]>(`/acoes/${id}/voluntarios/${pessoa_id}`, { method: 'DELETE' }),
+
+  criarBeneficiario: (id: number, dados: { nome: string; contato?: string; observacao?: string }) =>
+    apiFetch<AcaoBeneficiario[]>(`/acoes/${id}/beneficiarios`, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    }),
+  removerBeneficiario: (id: number, bid: number) =>
+    apiFetch<AcaoBeneficiario[]>(`/acoes/${id}/beneficiarios/${bid}`, { method: 'DELETE' }),
+};

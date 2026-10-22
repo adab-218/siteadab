@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Adab\Api\Controllers\AcoesController;
 use Adab\Api\Controllers\AdminController;
 use Adab\Api\Controllers\AuthController;
 use Adab\Api\Controllers\CatalogosController;
@@ -190,6 +191,27 @@ $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
         $e->put('/{id}/atividades/{aid}', [$eventos, 'atualizarAtividade'])
           ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
         $e->delete('/{id}/atividades/{aid}', [$eventos, 'removerAtividade'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+    });
+
+    // M5 Ações: CRUD + voluntários + beneficiários.
+    $acoes = new AcoesController($pdo);
+    $g->group('/acoes', function (RouteCollectorProxy $a) use ($acoes) {
+        $a->get('', [$acoes, 'listar']);
+        $a->get('/{id}', [$acoes, 'ver']);
+        $a->post('', [$acoes, 'criar'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $a->put('/{id}', [$acoes, 'atualizar'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $a->delete('/{id}', [$acoes, 'remover'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $a->post('/{id}/voluntarios', [$acoes, 'vincularVoluntario'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $a->delete('/{id}/voluntarios/{pessoa_id}', [$acoes, 'desvincularVoluntario'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $a->post('/{id}/beneficiarios', [$acoes, 'criarBeneficiario'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $a->delete('/{id}/beneficiarios/{bid}', [$acoes, 'removerBeneficiario'])
           ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
     });
 

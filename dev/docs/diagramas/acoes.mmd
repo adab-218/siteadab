@@ -1,0 +1,29 @@
+%% M5 Ações — revisado em 2026-10-22
+%% Fonte: api/index.php, api/src/Controllers/AcoesController.php,
+%%        api/src/Repositories/AcaoRepository.php,
+%%        api/migrations/0004, src/pages/admin/AcoesPage.tsx
+flowchart TD
+    subgraph ROTAS["grupo autenticado (Auth → CSRF)<br/>escrita: secretaria/dirigente/admin"]
+        GL["GET /acoes?de&ate&tipo&status&depto"]
+        GV["GET /acoes/{id}<br/>+ voluntarios[] + beneficiarios[]"]
+        CR["POST/PUT /acoes"]
+        DL["DELETE /acoes/{id} → soft delete"]
+        PV["POST /acoes/{id}/voluntarios<br/>{pessoa_id, papel}"]
+        DV["DELETE …/voluntarios/{pessoa_id}"]
+        PB["POST /acoes/{id}/beneficiarios<br/>{nome, contato?, obs?}"]
+        DB["DELETE …/beneficiarios/{bid}"]
+    end
+
+    PV --> UQ{"uq_acao_pessoa?"}
+    UQ -- novo --> INS["INSERT voluntario|coordenador"]
+    UQ -- "já existe" --> UPD["ON DUPLICATE → atualiza papel<br/>(promove, não duplica)"]
+
+    subgraph FE["AcoesPage (/admin/acoes)"]
+        F["filtros período/tipo/status"]
+        T["tabela: nome, tipo, período,<br/>depto, vol/ben, status"]
+        M["Modal ação: nome, tipo, datas,<br/>local, depto, objetivo,<br/>resultado, status"]
+        D["Modal detalhe:<br/>voluntários (busca + papel)<br/>beneficiários (nome/contato/obs)"]
+        F --> T --> M & D
+    end
+
+    DL -. "deleted_at" .-> OC["oculta da lista;<br/>voluntários/beneficiários<br/>preservados no banco"]

@@ -12,6 +12,7 @@ import MembrosPage from './pages/admin/MembrosPage';
 import DepartamentosPage from './pages/admin/DepartamentosPage';
 import CultosPage from './pages/admin/CultosPage';
 import EventosPage from './pages/admin/EventosPage';
+import AcoesPage from './pages/admin/AcoesPage';
 import UsuariosPage from './pages/admin/UsuariosPage';
 import VersoesPage from './pages/VersoesPage';
 import EmBrevePage from './pages/admin/EmBrevePage';
@@ -39,6 +40,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="departamentos" element={<DepartamentosPage />} />
             <Route path="cultos" element={<CultosPage />} />
             <Route path="eventos" element={<EventosPage />} />
+            <Route path="acoes" element={<AcoesPage />} />
             <Route path="usuarios" element={<UsuariosPage />} />
             <Route path=":modulo" element={<EmBrevePage />} />
           </Route>

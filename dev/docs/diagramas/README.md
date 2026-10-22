@@ -18,6 +18,7 @@ atualizados **no mesmo commit** de qualquer mudança que altere o fluxo
 | `usuarios.mmd` | T2.2: gestão de usuários só-admin + proteções próprio usuário |
 | `cultos.mmd` | M3: agenda de cultos + tipos + seed 0008 + D11 |
 | `eventos.mmd` | M4: eventos + atividades + publicação automática no site |
+| `acoes.mmd` | M5: ações sociais/evangelísticas + voluntários + beneficiários |
 
 ## Fluxos ainda sem diagrama (a criar quando implementados)
 

@@ -113,11 +113,22 @@ Escritas: admin, secretaria, dirigente.
 | PUT/DELETE | `/api/eventos/{id}/atividades/{aid}` | ✅ |
 | POST | `/api/eventos/{id}/banner` — upload de imagem | pendente |
 
-### Ações
-| Método | Rota | Perfil |
+### Ações (M5)
+
+Soft delete. Voluntário = pessoa cadastrada (`uq_acao_pessoa` → re-vínculo
+promove papel, não duplica). Beneficiário = texto livre (externo, sem
+vínculo a pessoa). Escritas: admin, secretaria, dirigente.
+
+| Método | Rota | Status |
 |--------|------|--------|
-| GET/POST/PUT | `/api/acoes[/...]` | conforme matriz |
-| POST | `/api/acoes/{id}/voluntarios`, `/beneficiarios` | conforme matriz |
+| GET | `/api/acoes?de=&ate=&tipo=&status=&departamento_id=&pagina=` | ✅ |
+| GET | `/api/acoes/{id}` — inclui `voluntarios[]`, `beneficiarios[]` | ✅ |
+| POST/PUT | `/api/acoes`, `/{id}` `{nome, tipo, data_inicio?, data_fim?, local?, objetivo?, resultado?, departamento_id?, status?}` | ✅ |
+| DELETE | `/api/acoes/{id}` — soft delete | ✅ |
+| POST | `/api/acoes/{id}/voluntarios` `{pessoa_id, papel}` — upsert | ✅ |
+| DELETE | `/api/acoes/{id}/voluntarios/{pessoa_id}` | ✅ |
+| POST | `/api/acoes/{id}/beneficiarios` `{nome, contato?, observacao?}` | ✅ |
+| DELETE | `/api/acoes/{id}/beneficiarios/{bid}` | ✅ |
 
 ### EBD
 | Método | Rota | Perfil |
