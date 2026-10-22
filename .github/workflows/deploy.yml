@@ -26,6 +26,7 @@ jobs:
       - name: Verificação completa (mesmo que o CI)
         run: |
           npm ci
+          npm run versoes
           npm run lint
           npx tsc -b
           npm run test
