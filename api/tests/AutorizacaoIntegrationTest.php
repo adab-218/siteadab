@@ -85,10 +85,12 @@ final class AutorizacaoIntegrationTest extends TestCase
         $this->pdo->prepare('INSERT INTO ebd_professores (classe_id, pessoa_id, papel) VALUES (?, ?, "titular")')
             ->execute([$this->classeComProf, $this->pessoas['ebd_professor']]);
 
+        // Período fictício 2030-T1 — não colide com os períodos usados
+        // pelo EbdIntegrationTest (uq_periodo)
         $this->pdo->exec("INSERT INTO ebd_periodos (ano, trimestre, data_inicio, data_fim)
-                          VALUES (2026, 1, '2026-01-01', '2026-03-31')");
+                          VALUES (2030, 1, '2030-01-01', '2030-03-31')");
         $perId = (int) $this->pdo->lastInsertId();
-        $this->pdo->prepare('INSERT INTO ebd_aulas (periodo_id, numero_licao, data) VALUES (?, 1, "2026-01-04")')
+        $this->pdo->prepare('INSERT INTO ebd_aulas (periodo_id, numero_licao, data) VALUES (?, 1, "2030-01-06")')
             ->execute([$perId]);
         $this->aulaId = (int) $this->pdo->lastInsertId();
 
@@ -116,9 +118,13 @@ final class AutorizacaoIntegrationTest extends TestCase
         return (int) $this->pdo->lastInsertId();
     }
 
-    /** Executa request HTTP de verdade pela app Slim com sessão simulada. */
+    /**
+     * Executa request HTTP de verdade pela app Slim com sessão
+     * simulada. $uri sempre começa com /api (basePath da app).
+     */
     private function request(string $metodo, string $uri, ?string $perfil = null, ?array $body = null): array
     {
+        $uri = '/api' . $uri;
         $_SESSION = [];
         if ($perfil !== null) {
             $_SESSION['usuario'] = [
@@ -155,7 +161,7 @@ final class AutorizacaoIntegrationTest extends TestCase
         $_SESSION['usuario'] = ['id' => $this->usuarios['admin'], 'pessoa_id' => $this->pessoas['admin'], 'perfil' => 'admin'];
         $_SESSION['csrf'] = 'tok';
         $_SESSION['ultimo_acesso'] = time();
-        $req = $this->requests->createServerRequest('POST', '/membros');
+        $req = $this->requests->createServerRequest('POST', '/api/membros');
         $res = $this->app->handle($req);
         $this->assertSame(403, $res->getStatusCode());
         $this->assertSame('CSRF_INVALIDO', json_decode((string) $res->getBody(), true)['error']['code']);
