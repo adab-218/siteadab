@@ -39,17 +39,17 @@ final class EbdIntegrationTest extends TestCase
 
     public function testD2UmaMatriculaAtivaPorVez(): void
     {
-        $c1 = $this->repo->criarClasse(['nome' => 'Jovens', 'faixa_etaria' => '14-17']);
-        $c2 = $this->repo->criarClasse(['nome' => 'Adultos']);
+        $c1 = $this->repo->criarClasse(['nome' => 'EBD-Jovens', 'faixa_etaria' => '14-17']);
+        $c2 = $this->repo->criarClasse(['nome' => 'EBD-Adultos']);
         $pid = $this->novaPessoa('Aluno Teste');
 
         $id1 = $this->repo->matricular($c1, $pid, null, null);
         $this->assertGreaterThan(0, $id1);
-        $this->assertSame('Jovens', $this->repo->matriculaAtiva($pid)['classe_nome']);
+        $this->assertSame('EBD-Jovens', $this->repo->matriculaAtiva($pid)['classe_nome']);
 
         // transferir → encerra atual + cria nova (D2 preservada)
         $id2 = $this->repo->transferir($id1, $c2, null);
-        $this->assertSame('Adultos', $this->repo->matriculaAtiva($pid)['classe_nome']);
+        $this->assertSame('EBD-Adultos', $this->repo->matriculaAtiva($pid)['classe_nome']);
         $this->assertSame('transferido', $this->repo->buscarAluno($id1)['status']);
 
         // desistir → sem matrícula ativa
@@ -92,7 +92,7 @@ final class EbdIntegrationTest extends TestCase
 
     public function testD3ChamadaSoPresencaUpsert(): void
     {
-        $cid = $this->repo->criarClasse(['nome' => 'Crianças']);
+        $cid = $this->repo->criarClasse(['nome' => 'EBD-Crianças']);
         $pid = $this->novaPessoa('Aluna Criança');
         $alunoId = $this->repo->matricular($cid, $pid, null, null);
 
@@ -129,7 +129,7 @@ final class EbdIntegrationTest extends TestCase
 
     public function testProfessorLecionaNaClasse(): void
     {
-        $cid = $this->repo->criarClasse(['nome' => 'Adolescentes']);
+        $cid = $this->repo->criarClasse(['nome' => 'EBD-Adolescentes']);
         $prof = $this->novaPessoa('Prof Teste');
         $outro = $this->novaPessoa('Outra Pessoa');
 
