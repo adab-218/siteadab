@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Adab\Api\Tests;
 
+use Adab\Api\Migrator;
 use Adab\Api\Repositories\MembroRepository;
 use PDO;
 use PHPUnit\Framework\TestCase;
@@ -26,6 +27,9 @@ final class MembrosIntegrationTest extends TestCase
         $this->pdo = new PDO($dsn, getenv('ADAB_TEST_USER') ?: null, getenv('ADAB_TEST_PASS') ?: null, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         ]);
+        // Garante schema mesmo se este teste rodar antes do
+        // MigrationsIntegrationTest (ordem alfabética do PHPUnit)
+        (new Migrator($this->pdo, dirname(__DIR__) . '/migrations'))->run();
     }
 
     public function testMudarStatusParaForaDeAtivoDesvinculaTudo(): void
@@ -66,7 +70,7 @@ final class MembrosIntegrationTest extends TestCase
         $pdo = $this->pdo;
 
         $pdo->exec("INSERT INTO pessoas (nome_completo) VALUES ('No Depto'), ('Fora Depto')");
-        $de1 = (int) $pdo->lastInsertId() - 1;
+        $de1 = (int) $pdo->lastInsertId();
         $de2 = $de1 + 1;
         $pdo->exec("INSERT INTO membros (pessoa_id) VALUES ({$de1}), ({$de2})");
         $pdo->exec("INSERT INTO departamentos (nome) VALUES ('Louvor')");
