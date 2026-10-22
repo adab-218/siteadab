@@ -19,6 +19,7 @@ atualizados **no mesmo commit** de qualquer mudança que altere o fluxo
 | `cultos.mmd` | M3: agenda de cultos + tipos + seed 0008 + D11 |
 | `eventos.mmd` | M4: eventos + atividades + publicação automática no site |
 | `acoes.mmd` | M5: ações sociais/evangelísticas + voluntários + beneficiários |
+| `ebd.mmd` | M6: classes/profs, matrícula (D2), períodos/aulas (D4/D8), chamada (D3), relatórios |
 
 ## Fluxos ainda sem diagrama (a criar quando implementados)
 

@@ -130,18 +130,36 @@ vínculo a pessoa). Escritas: admin, secretaria, dirigente.
 | POST | `/api/acoes/{id}/beneficiarios` `{nome, contato?, observacao?}` | ✅ |
 | DELETE | `/api/acoes/{id}/beneficiarios/{bid}` | ✅ |
 
-### EBD
-| Método | Rota | Perfil |
-|--------|------|--------|
-| GET/POST/PUT | `/api/ebd/classes[/...]` | ebd_admin, admin |
-| POST | `/api/ebd/classes/{id}/professores` | ebd_admin, admin |
-| GET/POST | `/api/ebd/alunos` (matrícula) | ebd_admin, admin, ebd_professor (leitura) |
-| POST | `/api/ebd/alunos/{id}/transferir`, `/desistir` | ebd_admin, admin |
-| GET/POST | `/api/ebd/periodos`, `/{id}/aulas` | ebd_admin, admin |
-| GET | `/api/ebd/aulas/{id}/chamada?classe_id=` | professor da classe |
-| PUT | `/api/ebd/aulas/{id}/chamada` | professor da classe (upsert frequências) |
-| GET | `/api/ebd/relatorios/frequencia?classe_id=&periodo_id=` | ebd_admin, admin, dirigente |
-| GET | `/api/ebd/relatorios/faltosos?semanas=` | ebd_admin, admin |
+### EBD (M6)
+
+Decisões: **D2** uma matrícula `matriculado` por aluno (422
+`JA_MATRICULADO`; re-matrícula na mesma classe reativa a linha terminal).
+**D3** só presença registrada (falta = ausência de linha); chamada por
+`ebd_admin` ou `ebd_professor` que leciona na classe. **D4** períodos
+`ano+trimestre` (422 `PERIODO_DUPLICADO`). **D8** `gerar-aulas` cria uma
+aula por domingo do período (idempotente); `POST /aulas` cria aula
+pontual/transferida em qualquer data (nº sequencial seguinte).
+
+| Método | Rota | Perfil | Status |
+|--------|------|--------|--------|
+| GET | `/api/ebd/classes?ativo=` | autenticado | ✅ |
+| POST/PUT | `/api/ebd/classes`, `/{id}` | ebd_admin, admin | ✅ |
+| GET | `/api/ebd/classes/{id}/professores` | autenticado | ✅ |
+| POST | `/api/ebd/classes/{id}/professores` `{pessoa_id, papel}` | ebd_admin, admin | ✅ |
+| DELETE | `/api/ebd/classes/{id}/professores/{pid}` → `ativo=0` | ebd_admin, admin | ✅ |
+| GET | `/api/ebd/alunos?classe_id=&status=&q=` | ebd_admin, admin, ebd_professor | ✅ |
+| POST | `/api/ebd/alunos` `{pessoa_id, classe_id, observacao?}` | ebd_admin, admin | ✅ |
+| POST | `/api/ebd/alunos/{id}/transferir` `{classe_id}` | ebd_admin, admin | ✅ |
+| POST | `/api/ebd/alunos/{id}/desistir` | ebd_admin, admin | ✅ |
+| GET | `/api/ebd/periodos` | autenticado | ✅ |
+| POST | `/api/ebd/periodos` `{ano, trimestre, data_inicio, data_fim, tema_revista?}` | ebd_admin, admin | ✅ |
+| GET | `/api/ebd/periodos/{id}/aulas` | autenticado | ✅ |
+| POST | `/api/ebd/periodos/{id}/aulas` — aula pontual/transferida | ebd_admin, admin | ✅ |
+| POST | `/api/ebd/periodos/{id}/gerar-aulas` — domingos | ebd_admin, admin | ✅ |
+| GET | `/api/ebd/aulas/{id}/chamada?classe_id=` | ebd_admin ou professor da classe | ✅ |
+| PUT | `/api/ebd/aulas/{id}/chamada` `{classe_id, frequencias[]}` — upsert | ebd_admin ou professor da classe | ✅ |
+| GET | `/api/ebd/relatorios/frequencia?classe_id=&periodo_id=` | ebd_admin, admin, dirigente | ✅ |
+| GET | `/api/ebd/relatorios/faltosos?semanas=` (1–12, default 4) | ebd_admin, admin | ✅ |
 
 ### Público (site) — sem auth
 | Método | Rota | Conteúdo |

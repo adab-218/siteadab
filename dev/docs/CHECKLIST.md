@@ -129,11 +129,11 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       (perfil/ativo) e duplicidades; nav só p/ admin
 - [x] T2.3 Site público dinâmico — WeeklySchedule + seção Eventos
       (`EventoPublicoCard`, `/public/eventos`, oculta se vazia, menu atualizado)
-- [~] T2.4 Módulos — M3 Cultos ✅ M4 Eventos ✅ M5 Ações ✅
-      (`AcaoRepository`/`AcoesController` + voluntários (upsert papel) +
-      beneficiários texto livre, `AcoesPage`, `AcoesIntegrationTest`).
-      Restam: M6 EBD (precisa D2–D4/D8), chamada nominal
-      (`culto_presencas`), upload de banner/foto
+- [x] T2.4 Módulos — M3 Cultos ✅ M4 Eventos ✅ M5 Ações ✅ M6 EBD ✅
+      (`EbdRepository`/`EbdController`: classes/profs, matrícula D2,
+      períodos D4 + aulas domingos/pontuais D8, chamada D3, relatórios;
+      `EbdPage` 4 abas; `EbdIntegrationTest`). Restam: chamada nominal
+      de cultos (`culto_presencas`), upload de banner/foto, CSV (D9)
 - [ ] T2.5 Testes de autorização negativa por perfil (CI c/ MySQL service)
 - [ ] T2.6 E2E Playwright (após 1º fluxo completo)
 
@@ -141,14 +141,22 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
 
 - [x] D1 **Fluxo livre + desvincula**: status muda livremente; sair de 'ativo'
       desativa vínculos de departamento, matrícula EBD e acesso de usuário
-- [ ] D2 EBD: oferta/visitante por aluno ou totais da aula
-- [ ] D3 Re-matrícula após desistência (novo registro ou reativação)
-- [ ] D4 Escopo `ebd_professor` (busca ampla p/ matricular vs. só sua classe)
+- [x] D2 **Uma classe por vez + campos por aluno** — matrícula ativa
+      única (422 JA_MATRICULADO); oferta/visitante/bíblia/revista
+      registrados por aluno na chamada (conforme schema)
+- [x] D3 **Reativação** — re-matricular na mesma classe reaproveita a
+      linha terminal (status volta a 'matriculado'); só presença é
+      registrada na chamada (falta = ausência de linha)
+- [x] D4 **Professor lê ampla, escreve na sua classe** — ebd_professor
+      lista alunos; matricular/transferir é ebd_admin; chamada exige
+      lecionar na classe (ebd_professores.ativo)
 - [x] D5 **`lider_departamento` vê/edita apenas o próprio departamento**
       (membros + ações do depto; escopo por registro)
 - [x] D6 **Departamentos só aceitam membros** (FK atual para `membros` mantida)
 - [ ] D7 LGPD: política de retenção/anonimização + termo de consentimento
-- [ ] D8 Calendário EBD (domingos? feriados? 13 lições fixas?)
+- [x] D8 **Domingos + pontuais** — gerar-aulas cria 1 aula por domingo
+      do período (idempotente); aulas transferidas/pontuais criadas em
+      qualquer data com numeração sequencial
 - [ ] D9 Formato/chave de dedup do CSV de importação
 - [ ] D10 SMTP disponível? Fluxo alternativo se e-mail falhar
 - [x] D11 **Sim — 1 culto por tipo/dia** (`uq_cultos_tipo_data` no schema;

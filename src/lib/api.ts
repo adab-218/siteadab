@@ -544,3 +544,160 @@ export const acoesApi = {
   removerBeneficiario: (id: number, bid: number) =>
     apiFetch<AcaoBeneficiario[]>(`/acoes/${id}/beneficiarios/${bid}`, { method: 'DELETE' }),
 };
+
+// ---------------------------------------------------------------------
+// EBD (M6)
+
+export interface EbdClasse {
+  id: number;
+  nome: string;
+  faixa_etaria: string | null;
+  sala: string | null;
+  ativo: number;
+  total_professores?: number;
+  total_alunos?: number;
+}
+
+export interface EbdProfessor {
+  id: number;
+  pessoa_id: number;
+  nome_completo: string;
+  papel: 'titular' | 'auxiliar' | 'substituto';
+  ativo: number;
+}
+
+export type EbdStatusAluno = 'matriculado' | 'transferido' | 'desistente';
+
+export interface EbdAluno {
+  id: number;
+  classe_id: number;
+  classe_nome: string;
+  pessoa_id: number;
+  nome_completo: string;
+  data_matricula: string;
+  data_desistencia: string | null;
+  status: EbdStatusAluno;
+}
+
+export interface EbdPeriodo {
+  id: number;
+  ano: number;
+  trimestre: number;
+  tema_revista: string | null;
+  data_inicio: string;
+  data_fim: string;
+  total_aulas?: number;
+}
+
+export interface EbdAula {
+  id: number;
+  periodo_id: number;
+  numero_licao: number;
+  titulo_licao: string | null;
+  data: string;
+  texto_aureo: string | null;
+  leitura_biblica: string | null;
+}
+
+export interface EbdChamadaItem {
+  aluno_id: number;
+  nome_completo: string;
+  presente: number | null;
+  trouxe_biblia: number | null;
+  trouxe_revista: number | null;
+  oferta: string | null;
+  visitante: number | null;
+  registrado: number;
+}
+
+export interface EbdChamada {
+  aula: EbdAula;
+  chamada: EbdChamadaItem[];
+}
+
+export interface EbdFreqResumo {
+  classe_id: number;
+  classe_nome: string;
+  periodo_id: number;
+  aula_id: number;
+  data: string;
+  total_registros: number;
+  presentes: number;
+  biblias: number;
+  revistas: number;
+  ofertas: string;
+  visitantes: number;
+}
+
+export interface EbdFaltoso {
+  aluno_id: number;
+  nome_completo: string;
+  classe_nome: string;
+  ultima_presenca: string | null;
+}
+
+export const ebdApi = {
+  classes: (apenasAtivas?: boolean) =>
+    apiFetch<EbdClasse[]>(`/ebd/classes${apenasAtivas !== undefined ? `?ativo=${apenasAtivas}` : ''}`),
+  criarClasse: (dados: { nome: string; faixa_etaria?: string; sala?: string }) =>
+    apiFetch<EbdClasse>('/ebd/classes', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizarClasse: (id: number, dados: { nome?: string; faixa_etaria?: string | null; sala?: string | null; ativo?: boolean }) =>
+    apiFetch<EbdClasse>(`/ebd/classes/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
+  professores: (classeId: number) =>
+    apiFetch<EbdProfessor[]>(`/ebd/classes/${classeId}/professores`),
+  vincularProfessor: (classeId: number, pessoa_id: number, papel: EbdProfessor['papel'] = 'auxiliar') =>
+    apiFetch<EbdProfessor[]>(`/ebd/classes/${classeId}/professores`, {
+      method: 'POST',
+      body: JSON.stringify({ pessoa_id, papel }),
+    }),
+  desvincularProfessor: (classeId: number, pid: number) =>
+    apiFetch<EbdProfessor[]>(`/ebd/classes/${classeId}/professores/${pid}`, { method: 'DELETE' }),
+
+  alunos: (params: { classe_id?: number; status?: EbdStatusAluno; q?: string } = {}) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '') {
+        qs.set(k, String(v));
+      }
+    }
+    return apiFetch<EbdAluno[]>(`/ebd/alunos?${qs}`);
+  },
+  matricular: (pessoa_id: number, classe_id: number, observacao?: string) =>
+    apiFetch<EbdAluno>('/ebd/alunos', {
+      method: 'POST',
+      body: JSON.stringify({ pessoa_id, classe_id, observacao }),
+    }),
+  transferir: (alunoId: number, classe_id: number) =>
+    apiFetch<EbdAluno>(`/ebd/alunos/${alunoId}/transferir`, {
+      method: 'POST',
+      body: JSON.stringify({ classe_id }),
+    }),
+  desistir: (alunoId: number) =>
+    apiFetch<{ ok: true }>(`/ebd/alunos/${alunoId}/desistir`, { method: 'POST' }),
+
+  periodos: () => apiFetch<EbdPeriodo[]>('/ebd/periodos'),
+  criarPeriodo: (dados: { ano: number; trimestre: number; tema_revista?: string; data_inicio: string; data_fim: string }) =>
+    apiFetch<EbdPeriodo>('/ebd/periodos', { method: 'POST', body: JSON.stringify(dados) }),
+  aulas: (periodoId: number) => apiFetch<EbdAula[]>(`/ebd/periodos/${periodoId}/aulas`),
+  criarAula: (periodoId: number, dados: { data: string; titulo_licao?: string; texto_aureo?: string; leitura_biblica?: string }) =>
+    apiFetch<EbdAula>(`/ebd/periodos/${periodoId}/aulas`, { method: 'POST', body: JSON.stringify(dados) }),
+  gerarAulas: (periodoId: number) =>
+    apiFetch<{ criadas: number; aulas: EbdAula[] }>(`/ebd/periodos/${periodoId}/gerar-aulas`, { method: 'POST' }),
+
+  chamada: (aulaId: number, classeId: number) =>
+    apiFetch<EbdChamada>(`/ebd/aulas/${aulaId}/chamada?classe_id=${classeId}`),
+  salvarChamada: (aulaId: number, classe_id: number, frequencias: Partial<EbdChamadaItem>[]) =>
+    apiFetch<{ registrados: number; chamada: EbdChamadaItem[] }>(`/ebd/aulas/${aulaId}/chamada`, {
+      method: 'PUT',
+      body: JSON.stringify({ classe_id, frequencias }),
+    }),
+
+  relatorioFrequencia: (classe_id?: number, periodo_id?: number) => {
+    const qs = new URLSearchParams();
+    if (classe_id) qs.set('classe_id', String(classe_id));
+    if (periodo_id) qs.set('periodo_id', String(periodo_id));
+    return apiFetch<EbdFreqResumo[]>(`/ebd/relatorios/frequencia?${qs}`);
+  },
+  relatorioFaltosos: (semanas = 4) =>
+    apiFetch<EbdFaltoso[]>(`/ebd/relatorios/faltosos?semanas=${semanas}`),
+};

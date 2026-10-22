@@ -8,6 +8,7 @@ use Adab\Api\Controllers\AuthController;
 use Adab\Api\Controllers\CatalogosController;
 use Adab\Api\Controllers\CultosController;
 use Adab\Api\Controllers\DepartamentosController;
+use Adab\Api\Controllers\EbdController;
 use Adab\Api\Controllers\EventosController;
 use Adab\Api\Controllers\MembrosController;
 use Adab\Api\Controllers\PublicController;
@@ -213,6 +214,51 @@ $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
           ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
         $a->delete('/{id}/beneficiarios/{bid}', [$acoes, 'removerBeneficiario'])
           ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+    });
+
+    // M6 EBD: classes, professores, matrículas (D2), períodos/aulas
+    // (D4/D8), chamada (D3 — professor da classe ou ebd_admin) e
+    // relatórios. Escritas de catálogo: ebd_admin (+admin automático).
+    $ebd = new EbdController($pdo);
+    $g->group('/ebd', function (RouteCollectorProxy $e) use ($ebd) {
+        $e->get('/classes', [$ebd, 'listarClasses']);
+        $e->post('/classes', [$ebd, 'criarClasse'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
+        $e->put('/classes/{id}', [$ebd, 'atualizarClasse'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
+        $e->get('/classes/{id}/professores', [$ebd, 'professoresDaClasse']);
+        $e->post('/classes/{id}/professores', [$ebd, 'vincularProfessor'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
+        $e->delete('/classes/{id}/professores/{pid}', [$ebd, 'desvincularProfessor'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
+
+        $e->get('/alunos', [$ebd, 'listarAlunos'])
+          ->add(PerfilMiddleware::para(['ebd_admin', 'ebd_professor']));
+        $e->post('/alunos', [$ebd, 'matricular'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
+        $e->post('/alunos/{id}/transferir', [$ebd, 'transferir'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
+        $e->post('/alunos/{id}/desistir', [$ebd, 'desistir'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
+
+        $e->get('/periodos', [$ebd, 'listarPeriodos']);
+        $e->post('/periodos', [$ebd, 'criarPeriodo'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
+        $e->get('/periodos/{id}/aulas', [$ebd, 'aulasDoPeriodo']);
+        $e->post('/periodos/{id}/aulas', [$ebd, 'criarAula'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
+        $e->post('/periodos/{id}/gerar-aulas', [$ebd, 'gerarAulas'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
+
+        $e->get('/aulas/{id}/chamada', [$ebd, 'verChamada'])
+          ->add(PerfilMiddleware::para(['ebd_admin', 'ebd_professor']));
+        $e->put('/aulas/{id}/chamada', [$ebd, 'salvarChamada'])
+          ->add(PerfilMiddleware::para(['ebd_admin', 'ebd_professor']));
+
+        $e->get('/relatorios/frequencia', [$ebd, 'relatorioFrequencia'])
+          ->add(PerfilMiddleware::para(['ebd_admin', 'dirigente']));
+        $e->get('/relatorios/faltosos', [$ebd, 'relatorioFaltosos'])
+          ->add(PerfilMiddleware::para(['ebd_admin']));
     });
 
     // Gestão de usuários — todo o grupo é só-admin (lista vazia).

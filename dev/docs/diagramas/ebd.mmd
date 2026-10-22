@@ -1,0 +1,37 @@
+%% M6 EBD — revisado em 2026-10-22
+%% Fonte: api/index.php, api/src/Controllers/EbdController.php,
+%%        api/src/Repositories/EbdRepository.php,
+%%        api/migrations/0005+0006, src/pages/admin/EbdPage.tsx
+%% Decisões D2/D3/D4/D8 marcadas no fluxo
+flowchart TD
+    subgraph CLASSES["Classes + Professores (ebd_admin)"]
+        C1["POST/PUT /ebd/classes<br/>(nome único, ativo)"]
+        P1["POST /classes/{id}/professores<br/>{pessoa_id, papel}<br/>(titular/auxiliar/substituto)"]
+    end
+
+    subgraph ALUNOS["Matrícula — D2: 1 classe por vez"]
+        MA["POST /ebd/alunos {pessoa_id, classe_id}"] --> CHK{"matrícula ativa<br/>em ALGUMA classe?"}
+        CHK -- sim --> E422["422 JA_MATRICULADO<br/>→ sugerir transferir"]
+        CHK -- não --> MAT["INSERT ou REATIVA<br/>linha terminal<br/>(uq classe+pessoa+status)"]
+        TR["POST /alunos/{id}/transferir"] --> TX["transação: encerra atual<br/>(status=transferido) +<br/>matricular(destino)"]
+        DS["POST /alunos/{id}/desistir"] --> DX["status=desistente"]
+    end
+
+    subgraph PERIODO["Períodos — D4 trimestral"]
+        P4["POST /ebd/periodos<br/>{ano, trimestre, datas}<br/>uq → 422 PERIODO_DUPLICADO"]
+        GA["POST /periodos/{id}/gerar-aulas<br/>— D8: 1 aula por domingo,<br/>idempotente, numeração seq."]
+        AP["POST /periodos/{id}/aulas<br/>— D8: pontual/transferida<br/>em qualquer data (nº seguinte)"]
+    end
+
+    subgraph CHAMADA["Chamada — D3: só presença"]
+        GET["GET /aulas/{id}/chamada?classe_id="] --> GATE{"ebd_admin OU<br/>professor ativo<br/>da classe?"}
+        GATE -- não --> E403["403 SEM_PERMISSAO"]
+        GATE -- sim --> LISTA["alunos matriculados<br/>+ frequência (se houver)"]
+        PUT["PUT /aulas/{id}/chamada<br/>{frequencias[]}"] --> GATE
+        LISTA --> UP["upsert uq_freq_aula_aluno<br/>presente + bíblia + revista + oferta"]
+    end
+
+    subgraph REL["Relatórios"]
+        RF["GET /relatorios/frequencia<br/>v_ebd_frequencia_resumo<br/>(ebd_admin, dirigente)"]
+        FT["GET /relatorios/faltosos?semanas=<br/>(ebd_admin)"]
+    end
