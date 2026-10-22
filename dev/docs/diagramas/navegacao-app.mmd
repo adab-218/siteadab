@@ -29,6 +29,7 @@ flowchart TD
     LAYOUT --> IDX["index → DashboardPage"]
     LAYOUT --> MB["/admin/membros → MembrosPage<br/>(tabela + CRUD via /api/membros)"]
     LAYOUT --> DP["/admin/departamentos → DepartamentosPage<br/>(CRUD + vínculos via /api/departamentos)"]
+    LAYOUT --> US["/admin/usuarios → UsuariosPage<br/>(só admin — nav filtrado + API only-admin)"]
     LAYOUT --> MOD["/admin/:modulo → EmBrevePage<br/>(módulos em construção)"]
 
     RT --> FALL["* → Navigate /"]

@@ -64,6 +64,20 @@ encerrado é reativado (`data_fim=NULL`) por causa de
 | DELETE | `/api/departamentos/{id}/membros/{pessoa_id}` — encerra vínculo (`data_fim`) | admin, secretaria, líder do depto | ✅ |
 | GET | `/api/membros/aniversariantes?mes=` | autenticado | ✅ |
 
+### Usuários (T2.2 — todo o grupo é só-admin)
+
+Admin não pode rebaixar o próprio perfil nem desativar a própria conta
+(422 `PROPRIO_USUARIO`). Uma conta por pessoa (`uq_usuarios_pessoa` →
+422 `PESSOA_COM_USUARIO`), e-mail único (422 `EMAIL_DUPLICADO`).
+
+| Método | Rota | Status |
+|--------|------|--------|
+| GET | `/api/usuarios?q=` | ✅ |
+| POST | `/api/usuarios` `{pessoa_id, email, senha≥10, perfil}` | ✅ |
+| PUT | `/api/usuarios/{id}` `{email?, perfil?, ativo?}` | ✅ |
+| PATCH | `/api/usuarios/{id}/senha` `{senha≥10}` — invalida reset pendente | ✅ |
+| DELETE | `/api/usuarios/{id}` — desativa (`ativo=0`) | ✅ |
+
 ### Cultos
 | Método | Rota | Perfil |
 |--------|------|--------|

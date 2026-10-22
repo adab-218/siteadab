@@ -21,5 +21,5 @@ flowchart TD
 
     subgraph FE["Frontend"]
         PC --> WS["WeeklySchedule:<br/>filtra itens da semana exibida<br/>→ agrupa por data → colunas Seg–Dom<br/>estados: carregando / erro / vazio"]
-        PV --> EV["seção Eventos do site<br/>(consumo futuro — ver CHECKLIST T2.3)"]
+        PV --> EV["seção #eventos do site (App.tsx):<br/>EventoPublicoCard — banner, tipo,<br/>nome, período, local, descrição;<br/>oculta se lista vazia"]
     end

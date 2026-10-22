@@ -123,9 +123,12 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       seu; D6: só membros; reativação após data_fim), `DepartamentosPage`,
       `GET /membros/aniversariantes` + widget no Dashboard,
       `DepartamentosIntegrationTest`
-- [ ] T2.2 Gestão de usuários (admin)
-- [ ] T2.3 Site público dinâmico (programação/eventos via API) —
-      WeeklySchedule já consome `/public/programacao`; falta seção Eventos
+- [x] T2.2 Gestão de usuários (admin) — `UsuariosController`/`usuariosApi`/
+      `UsuariosPage`: listar, criar (pessoa+e-mail+senha≥10+perfil), editar
+      (e-mail/perfil/ativo), redefinir senha, desativar; 422 próprio usuário
+      (perfil/ativo) e duplicidades; nav só p/ admin
+- [x] T2.3 Site público dinâmico — WeeklySchedule + seção Eventos
+      (`EventoPublicoCard`, `/public/eventos`, oculta se vazia, menu atualizado)
 - [ ] T2.4 M2 Cultos → M3 Eventos → M4 Ações → M5 EBD
 - [ ] T2.5 Testes de autorização negativa por perfil (CI c/ MySQL service)
 - [ ] T2.6 E2E Playwright (após 1º fluxo completo)

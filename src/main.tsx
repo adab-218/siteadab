@@ -10,6 +10,7 @@ import AdminLayout from './pages/admin/AdminLayout';
 import DashboardPage from './pages/admin/DashboardPage';
 import MembrosPage from './pages/admin/MembrosPage';
 import DepartamentosPage from './pages/admin/DepartamentosPage';
+import UsuariosPage from './pages/admin/UsuariosPage';
 import EmBrevePage from './pages/admin/EmBrevePage';
 import './index.css';
 
@@ -32,6 +33,7 @@ createRoot(document.getElementById('root')!).render(
             <Route index element={<DashboardPage />} />
             <Route path="membros" element={<MembrosPage />} />
             <Route path="departamentos" element={<DepartamentosPage />} />
+            <Route path="usuarios" element={<UsuariosPage />} />
             <Route path=":modulo" element={<EmBrevePage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

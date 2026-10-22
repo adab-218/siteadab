@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Calendar, Church, HandHeart, LayoutDashboard, LogOut, Network, Users, GraduationCap } from 'lucide-react';
+import { Calendar, Church, HandHeart, LayoutDashboard, LogOut, Network, ShieldCheck, Users, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/admin/eventos', label: 'Eventos', icon: Calendar },
   { to: '/admin/acoes', label: 'Ações', icon: HandHeart },
   { to: '/admin/ebd', label: 'EBD', icon: GraduationCap },
+  { to: '/admin/usuarios', label: 'Usuários', icon: ShieldCheck, perfis: ['admin'] },
 ];
 
 const perfilLabel: Record<string, string> = {
@@ -40,7 +41,9 @@ const AdminLayout: React.FC = () => {
           <p className="text-xs text-gray-500 mt-2">Gestão do Templo</p>
         </div>
         <nav className="flex-1 p-3 space-y-1">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
+          {navItems
+            .filter((i) => !i.perfis || i.perfis.includes(usuario?.perfil ?? ''))
+            .map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}

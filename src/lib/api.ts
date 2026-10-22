@@ -282,3 +282,32 @@ export const departamentosApi = {
   removerMembro: (id: number, pessoa_id: number) =>
     apiFetch<{ ok: true }>(`/departamentos/${id}/membros/${pessoa_id}`, { method: 'DELETE' }),
 };
+
+// ---------------------------------------------------------------------
+// Usuários (T2.2 — somente admin)
+
+export interface UsuarioListItem {
+  id: number;
+  pessoa_id: number;
+  nome_completo: string;
+  email: string;
+  perfil: Usuario['perfil'];
+  ativo: number;
+  ultimo_login_em: string | null;
+}
+
+export const usuariosApi = {
+  listar: (q?: string) =>
+    apiFetch<UsuarioListItem[]>(`/usuarios${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  criar: (dados: { pessoa_id: number; email: string; senha: string; perfil: Usuario['perfil'] }) =>
+    apiFetch<UsuarioListItem>('/usuarios', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizar: (id: number, dados: { email?: string; perfil?: Usuario['perfil']; ativo?: boolean }) =>
+    apiFetch<UsuarioListItem>(`/usuarios/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
+  senha: (id: number, senha: string) =>
+    apiFetch<{ ok: true }>(`/usuarios/${id}/senha`, {
+      method: 'PATCH',
+      body: JSON.stringify({ senha }),
+    }),
+  remover: (id: number) =>
+    apiFetch<{ ok: true }>(`/usuarios/${id}`, { method: 'DELETE' }),
+};

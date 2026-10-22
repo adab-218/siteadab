@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Menu, X, ChevronRight, Users, Heart, BookOpen, HandHeart, MapPin, Mail, Facebook, Calendar } from 'lucide-react';
 import WeeklySchedule from './components/WeeklySchedule';
+import EventoPublicoCard from './components/EventoPublicoCard';
+import { EventoPublico, publicApi } from './lib/api';
 
 interface MenuItemProps {
   href: string;
@@ -59,10 +61,15 @@ const DepartmentCard: React.FC<DepartmentCard> = ({ name, description, icon }) =
 const App: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [eventos, setEventos] = useState<EventoPublico[] | null>(null);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
   const closeMenu = () => setIsMenuOpen(false);
+
+  useEffect(() => {
+    publicApi.eventos().then(setEventos).catch(() => setEventos([]));
+  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -91,6 +98,7 @@ const App: React.FC = () => {
             <MenuItem href="#departamentos">Departamentos</MenuItem>
             <MenuItem href="#missoes">Missões</MenuItem>
             <MenuItem href="#sobre">Sobre Nós</MenuItem>
+            <MenuItem href="#eventos">Eventos</MenuItem>
             <MenuItem href="#contato">Contato</MenuItem>
             <button className="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition-colors duration-200 font-semibold">
               Contribua
@@ -128,6 +136,7 @@ const App: React.FC = () => {
               <MenuItem href="#departamentos" onClick={closeMenu}>Departamentos</MenuItem>
               <MenuItem href="#missoes" onClick={closeMenu}>Missões</MenuItem>
               <MenuItem href="#sobre" onClick={closeMenu}>Sobre Nós</MenuItem>
+              <MenuItem href="#eventos" onClick={closeMenu}>Eventos</MenuItem>
               <MenuItem href="#contato" onClick={closeMenu}>Contato</MenuItem>
               <button 
                 className="w-full bg-red-600 text-white px-6 py-3 rounded-full hover:bg-red-700 transition-colors duration-200 font-semibold"
@@ -202,6 +211,20 @@ const App: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Eventos Section — dados via /api/public/eventos */}
+      {eventos && eventos.length > 0 && (
+        <section id="eventos" className="py-20 bg-white">
+          <div className="container mx-auto px-4">
+            <h2 className="text-4xl font-bold text-center text-gray-800 mb-16">Próximos Eventos</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {eventos.map((e) => (
+                <EventoPublicoCard key={e.id} evento={e} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Departamentos Section */}
       <section id="departamentos" className="py-20 bg-white">

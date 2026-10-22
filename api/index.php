@@ -8,6 +8,7 @@ use Adab\Api\Controllers\CatalogosController;
 use Adab\Api\Controllers\DepartamentosController;
 use Adab\Api\Controllers\MembrosController;
 use Adab\Api\Controllers\PublicController;
+use Adab\Api\Controllers\UsuariosController;
 use Adab\Api\Database;
 use Adab\Api\Json;
 use Adab\Api\Middleware\AuthMiddleware;
@@ -146,6 +147,16 @@ $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
         $d->delete('/{id}/membros/{pessoa_id}', [$deptos, 'removerMembro'])
           ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
     });
+
+    // Gestão de usuários — todo o grupo é só-admin (lista vazia).
+    $usuarios = new UsuariosController($pdo);
+    $g->group('/usuarios', function (RouteCollectorProxy $u) use ($usuarios) {
+        $u->get('', [$usuarios, 'listar']);
+        $u->post('', [$usuarios, 'criar']);
+        $u->put('/{id}', [$usuarios, 'atualizar']);
+        $u->patch('/{id}/senha', [$usuarios, 'senha']);
+        $u->delete('/{id}', [$usuarios, 'remover']);
+    })->add(PerfilMiddleware::para([]));
 })->add(new CsrfMiddleware())->add(new AuthMiddleware($pdo));
 
 // ---------------------------------------------------------------------

@@ -1,0 +1,34 @@
+%% T2.2 Gestão de usuários — revisado em 2026-10-21
+%% Fonte: api/index.php, api/src/Controllers/UsuariosController.php,
+%%        api/src/Repositories/UsuarioRepository.php,
+%%        src/pages/admin/UsuariosPage.tsx
+flowchart TD
+    subgraph ROTAS["/api/usuarios — grupo só-admin<br/>(Auth → CSRF → PerfilMiddleware::para([]))"]
+        GL["GET /usuarios?q="]
+        PC["POST /usuarios<br/>{pessoa_id, email, senha≥10, perfil}"]
+        PU["PUT /usuarios/{id}<br/>{email?, perfil?, ativo?}"]
+        PS["PATCH /usuarios/{id}/senha"]
+        PD["DELETE /usuarios/{id} → ativo=0"]
+    end
+
+    PC --> VAL{"pessoa existe +<br/>email válido +<br/>senha ≥10 + perfil no enum"}
+    VAL -- falha --> E400["400 VALIDACAO"]
+    VAL -- ok --> DUP{"unique?"}
+    DUP -- "uq_usuarios_pessoa" --> E422A["422 PESSOA_COM_USUARIO"]
+    DUP -- "email" --> E422B["422 EMAIL_DUPLICADO"]
+    DUP -- ok --> INS["INSERT usuarios<br/>(password_hash)"]
+
+    PU --> SELF{"id == sessão?"}
+    SELF -- "perfil≠admin ou ativo=0" --> E422C["422 PROPRIO_USUARIO"]
+    PS --> LEN{"senha ≥10"} -- não --> E400
+    PS -- ok --> HASH["password_hash +<br/>zera reset_token"]
+    PD --> SELF2{"id == sessão?"} -- sim --> E422C
+    PD -- não --> OFF["ativo=0 → AuthMiddleware<br/>expulsa no próximo request"]
+
+    subgraph FE["UsuariosPage (/admin/usuarios — item só p/ admin)"]
+        T["tabela: nome, e-mail, perfil,<br/>último acesso, status"]
+        F["Modal criar/editar:<br/>pessoa (busca /membros),<br/>e-mail, senha, perfil, ativo"]
+        K["Modal redefinir senha"]
+        X["Desativar (confirmação;<br/>não oferecido p/ si mesmo)"]
+        T --> F & K & X
+    end
