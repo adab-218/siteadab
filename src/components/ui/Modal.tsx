@@ -15,12 +15,20 @@ interface ModalProps {
 const Modal: React.FC<ModalProps> = ({ titulo, onClose, children, largura = 'max-w-lg' }) => {
   const ref = useRef<HTMLDivElement>(null);
 
+  // onClose chega como função nova a cada render (callers usam inline
+  // arrow). Sem o ref, o efeito de mount rodaria a cada render e
+  // roubaria o foco do input que está sendo digitado.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     const focoAnterior = document.activeElement as HTMLElement | null;
     ref.current?.focus();
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
     const original = document.body.style.overflow;
@@ -30,7 +38,7 @@ const Modal: React.FC<ModalProps> = ({ titulo, onClose, children, largura = 'max
       document.body.style.overflow = original;
       focoAnterior?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div
