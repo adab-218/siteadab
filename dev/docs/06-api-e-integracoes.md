@@ -78,12 +78,24 @@ Admin não pode rebaixar o próprio perfil nem desativar a própria conta
 | PATCH | `/api/usuarios/{id}/senha` `{senha≥10}` — invalida reset pendente | ✅ |
 | DELETE | `/api/usuarios/{id}` — desativa (`ativo=0`) | ✅ |
 
-### Cultos
-| Método | Rota | Perfil |
-|--------|------|--------|
-| GET/POST | `/api/cultos`, `/api/tipos-culto` | leitura painel / escrita secretaria+ |
-| PUT | `/api/cultos/{id}` | admin, secretaria, dirigente |
-| POST | `/api/cultos/{id}/presencas` | admin, secretaria |
+### Cultos (M3)
+
+`uq_cultos_tipo_data`: um culto por tipo/dia (D11) → 422 `CULTO_DUPLICADO`.
+Escritas de culto: secretaria/dirigente/admin; tipos: secretaria/admin.
+Dados iniciais (D12) aplicados pela migration `0008` (INSERT IGNORE).
+
+| Método | Rota | Perfil | Status |
+|--------|------|--------|--------|
+| GET | `/api/tipos-culto?ativo=` | autenticado | ✅ |
+| POST | `/api/tipos-culto` `{nome, dia_semana_sugerido?, horario_padrao?}` | admin, secretaria | ✅ |
+| PUT | `/api/tipos-culto/{id}` (inclui `ativo`) | admin, secretaria | ✅ |
+| DELETE | `/api/tipos-culto/{id}` → `ativo=0` | admin, secretaria | ✅ |
+| GET | `/api/cultos?de=&ate=&tipo_culto_id=&pagina=` | autenticado | ✅ |
+| GET | `/api/cultos/{id}` | autenticado | ✅ |
+| POST | `/api/cultos` | admin, secretaria, dirigente | ✅ |
+| PUT | `/api/cultos/{id}` | admin, secretaria, dirigente | ✅ |
+| DELETE | `/api/cultos/{id}` (hard delete; presenças em cascata) | admin, secretaria, dirigente | ✅ |
+| POST | `/api/cultos/{id}/presencas` — chamada nominal | admin, secretaria, dirigente | pendente |
 
 ### Eventos / Ações
 | Método | Rota | Perfil |

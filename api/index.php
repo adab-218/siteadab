@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Adab\Api\Controllers\AdminController;
 use Adab\Api\Controllers\AuthController;
 use Adab\Api\Controllers\CatalogosController;
+use Adab\Api\Controllers\CultosController;
 use Adab\Api\Controllers\DepartamentosController;
 use Adab\Api\Controllers\MembrosController;
 use Adab\Api\Controllers\PublicController;
@@ -146,6 +147,29 @@ $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
           ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
         $d->delete('/{id}/membros/{pessoa_id}', [$deptos, 'removerMembro'])
           ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
+    });
+
+    // M3 Cultos: agenda + tipos. Escritas de culto: secretaria/dirigente/
+    // admin; catálogo de tipos: secretaria/admin.
+    $cultos = new CultosController($pdo);
+    $g->group('/tipos-culto', function (RouteCollectorProxy $t) use ($cultos) {
+        $t->get('', [$cultos, 'listarTipos']);
+        $t->post('', [$cultos, 'criarTipo'])
+          ->add(PerfilMiddleware::para(['secretaria']));
+        $t->put('/{id}', [$cultos, 'atualizarTipo'])
+          ->add(PerfilMiddleware::para(['secretaria']));
+        $t->delete('/{id}', [$cultos, 'desativarTipo'])
+          ->add(PerfilMiddleware::para(['secretaria']));
+    });
+    $g->group('/cultos', function (RouteCollectorProxy $c) use ($cultos) {
+        $c->get('', [$cultos, 'listar']);
+        $c->get('/{id}', [$cultos, 'ver']);
+        $c->post('', [$cultos, 'criar'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $c->put('/{id}', [$cultos, 'atualizar'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $c->delete('/{id}', [$cultos, 'remover'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
     });
 
     // Gestão de usuários — todo o grupo é só-admin (lista vazia).

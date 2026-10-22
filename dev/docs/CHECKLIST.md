@@ -129,7 +129,10 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       (perfil/ativo) e duplicidades; nav só p/ admin
 - [x] T2.3 Site público dinâmico — WeeklySchedule + seção Eventos
       (`EventoPublicoCard`, `/public/eventos`, oculta se vazia, menu atualizado)
-- [ ] T2.4 M2 Cultos → M3 Eventos → M4 Ações → M5 EBD
+- [~] T2.4 Módulos — M3 Cultos ✅ (`CultoRepository`/`CultosController`,
+      tipos_culto CRUD, seed `0008` com tipos da programação do site +
+      cargos AD, `CultosPage`, `CultosIntegrationTest`). Restam:
+      Eventos, Ações, EBD, chamada nominal (`culto_presencas`)
 - [ ] T2.5 Testes de autorização negativa por perfil (CI c/ MySQL service)
 - [ ] T2.6 E2E Playwright (após 1º fluxo completo)
 
@@ -147,6 +150,9 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
 - [ ] D8 Calendário EBD (domingos? feriados? 13 lições fixas?)
 - [ ] D9 Formato/chave de dedup do CSV de importação
 - [ ] D10 SMTP disponível? Fluxo alternativo se e-mail falhar
-- [ ] D11 Unique `(tipo_culto_id, data)` — uma entrada por tipo/dia é a regra?
-- [ ] D12 Listas iniciais de cargos/tipos de culto
+- [x] D11 **Sim — 1 culto por tipo/dia** (`uq_cultos_tipo_data` no schema;
+      dup → 422 CULTO_DUPLICADO)
+- [x] D12 **Seed `0008`**: tipos da programação do site (EBD dom 8h,
+      Adoração dom 18:30, Família qua 19:30 + Doutrina/Evangelístico) e
+      cargos AD (Membro→Pastor) via INSERT IGNORE
 - [x] D13 **Gerador fake removido do MVP** (seção 'Oração & Reflexão' cortada)

@@ -311,3 +311,74 @@ export const usuariosApi = {
   remover: (id: number) =>
     apiFetch<{ ok: true }>(`/usuarios/${id}`, { method: 'DELETE' }),
 };
+
+// ---------------------------------------------------------------------
+// Cultos (M3)
+
+export interface TipoCulto {
+  id: number;
+  nome: string;
+  dia_semana_sugerido: number | null;
+  horario_padrao: string | null;
+  ativo: number;
+}
+
+export interface Culto {
+  id: number;
+  tipo_culto_id: number;
+  tipo_nome: string;
+  data: string;
+  horario_inicio: string | null;
+  dirigente_id: number | null;
+  dirigente_nome: string | null;
+  pregador_id: number | null;
+  pregador_nome: string | null;
+  tema: string | null;
+  total_presentes: number | null;
+  total_visitantes: number | null;
+  total_decisoes: number | null;
+  observacoes: string | null;
+}
+
+export interface CultoPayload {
+  tipo_culto_id: number;
+  data: string;
+  horario_inicio?: string | null;
+  dirigente_id?: number | null;
+  pregador_id?: number | null;
+  tema?: string | null;
+  total_presentes?: number | null;
+  total_visitantes?: number | null;
+  total_decisoes?: number | null;
+  observacoes?: string | null;
+}
+
+export const tiposCultoApi = {
+  listar: (apenasAtivos?: boolean) =>
+    apiFetch<TipoCulto[]>(`/tipos-culto${apenasAtivos !== undefined ? `?ativo=${apenasAtivos}` : ''}`),
+  criar: (dados: { nome: string; dia_semana_sugerido?: number | null; horario_padrao?: string | null }) =>
+    apiFetch<TipoCulto>('/tipos-culto', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizar: (id: number, dados: { nome?: string; dia_semana_sugerido?: number | null; horario_padrao?: string | null; ativo?: boolean }) =>
+    apiFetch<TipoCulto>(`/tipos-culto/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
+  desativar: (id: number) =>
+    apiFetch<{ ok: true }>(`/tipos-culto/${id}`, { method: 'DELETE' }),
+};
+
+export const cultosApi = {
+  listar(params: { de?: string; ate?: string; tipo_culto_id?: number; pagina?: number; por_pagina?: number } = {}) {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '') {
+        qs.set(k, String(v));
+      }
+    }
+    return apiFetch<RespostaPaginada<Culto>>(`/cultos?${qs}`);
+  },
+  ver: (id: number) => apiFetch<Culto>(`/cultos/${id}`),
+  criar: (dados: CultoPayload) =>
+    apiFetch<Culto>('/cultos', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizar: (id: number, dados: Partial<CultoPayload>) =>
+    apiFetch<Culto>(`/cultos/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
+  remover: (id: number) =>
+    apiFetch<{ ok: true }>(`/cultos/${id}`, { method: 'DELETE' }),
+};
