@@ -122,6 +122,12 @@ function criarApp(PDO $pdo, array $config): App
               ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
             $c->delete('/{id}', [$cultos, 'remover'])
               ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+            // Presença nominal (uq_culto_pessoa → add idempotente)
+            $c->get('/{id}/presencas', [$cultos, 'listarPresencas']);
+            $c->post('/{id}/presencas', [$cultos, 'adicionarPresenca'])
+              ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+            $c->delete('/{id}/presencas/{pessoa_id}', [$cultos, 'removerPresenca'])
+              ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
         });
 
         // M4 Eventos: CRUD + programação interna (atividades).

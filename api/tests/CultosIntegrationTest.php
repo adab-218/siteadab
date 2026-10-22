@@ -80,4 +80,36 @@ final class CultosIntegrationTest extends TestCase
         $nomes = array_column($soAdocao['itens'], 'tipo_nome');
         $this->assertSame(['Culto de Adoração e Louvor', 'Culto de Adoração e Louvor'], $nomes);
     }
+
+    public function testPresencaNominal(): void
+    {
+        $repo = new CultoRepository($this->pdo);
+        $tipoId = (int) $this->pdo->query("SELECT id FROM tipos_culto WHERE nome = 'Culto da Família'")
+            ->fetchColumn();
+        $cultoId = $repo->criar(['tipo_culto_id' => $tipoId, 'data' => '2026-11-25'], null);
+
+        $this->pdo->prepare('INSERT INTO pessoas (nome_completo) VALUES ("Presente Um"), ("Presente Dois")')
+            ->execute();
+        $p1 = (int) $this->pdo->lastInsertId(); // multi-row: retorna o PRIMEIRO id
+        $p2 = $p1 + 1;
+
+        $repo->adicionarPresenca($cultoId, $p1);
+        $repo->adicionarPresenca($cultoId, $p2);
+        $repo->adicionarPresenca($cultoId, $p1); // uq → idempotente (IGNORE)
+        $this->assertCount(2, $repo->listarPresencas($cultoId));
+
+        // Contador na listagem
+        $pag = $repo->listarPaginado([], 1, 50);
+        $row = array_values(array_filter($pag['itens'], fn($c) => (int) $c['id'] === $cultoId))[0];
+        $this->assertSame(2, (int) $row['total_nomeados']);
+
+        $repo->removerPresenca($cultoId, $p1);
+        $this->assertCount(1, $repo->listarPresencas($cultoId));
+
+        // remover o culto apaga presenças (FK CASCADE)
+        $repo->remover($cultoId);
+        $this->assertSame(0, (int) $this->pdo->query(
+            "SELECT COUNT(*) FROM culto_presencas WHERE culto_id = {$cultoId}"
+        )->fetchColumn());
+    }
 }

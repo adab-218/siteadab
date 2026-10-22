@@ -132,8 +132,10 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
 - [x] T2.4 Módulos — M3 Cultos ✅ M4 Eventos ✅ M5 Ações ✅ M6 EBD ✅
       (`EbdRepository`/`EbdController`: classes/profs, matrícula D2,
       períodos D4 + aulas domingos/pontuais D8, chamada D3, relatórios;
-      `EbdPage` 4 abas; `EbdIntegrationTest`). Restam: chamada nominal
-      de cultos (`culto_presencas`), upload de banner/foto, CSV (D9)
+      `EbdPage` 4 abas; `EbdIntegrationTest`) + **chamada nominal de
+      cultos** (`culto_presencas`: GET/POST/DELETE `/cultos/{id}/presencas`,
+      só membros, add idempotente por `uq_culto_pessoa`, contador
+      `total_nomeados` na listagem). Restam: upload de banner/foto, CSV (D9)
 - [x] T2.5 `AutorizacaoIntegrationTest` — HTTP real na app (criarApp
       extraída p/ api/src/App.php): 401 sem sessão, 403 sem CSRF,
       matriz 17 casos perfil×rota negativos, gate D3 (professor só na

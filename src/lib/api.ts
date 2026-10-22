@@ -338,6 +338,12 @@ export interface Culto {
   total_visitantes: number | null;
   total_decisoes: number | null;
   observacoes: string | null;
+  total_nomeados?: number;
+}
+
+export interface CultoPresenca {
+  pessoa_id: number;
+  nome_completo: string;
 }
 
 export interface CultoPayload {
@@ -381,6 +387,16 @@ export const cultosApi = {
     apiFetch<Culto>(`/cultos/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
   remover: (id: number) =>
     apiFetch<{ ok: true }>(`/cultos/${id}`, { method: 'DELETE' }),
+
+  // Presença nominal (M3)
+  presencas: (id: number) => apiFetch<CultoPresenca[]>(`/cultos/${id}/presencas`),
+  adicionarPresenca: (id: number, pessoa_id: number) =>
+    apiFetch<CultoPresenca[]>(`/cultos/${id}/presencas`, {
+      method: 'POST',
+      body: JSON.stringify({ pessoa_id }),
+    }),
+  removerPresenca: (id: number, pessoa_id: number) =>
+    apiFetch<CultoPresenca[]>(`/cultos/${id}/presencas/${pessoa_id}`, { method: 'DELETE' }),
 };
 
 // ---------------------------------------------------------------------

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Church, Loader2, Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
+import { Church, Loader2, Pencil, Plus, Settings2, Trash2, Users } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Field from '../../components/ui/Field';
 import {
   ApiError,
   Culto,
   CultoPayload,
+  CultoPresenca,
   cultosApi,
   membrosApi,
   MembroListItem,
@@ -52,6 +53,13 @@ const CultosPage: React.FC = () => {
   const [tipoForm, setTipoForm] = useState({ nome: '', dia_semana_sugerido: '', horario_padrao: '' });
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState('');
+
+  // Chamada nominal (presenças por nome)
+  const [modalPresenca, setModalPresenca] = useState<null | Culto>(null);
+  const [presencas, setPresencas] = useState<CultoPresenca[]>([]);
+  const [buscaPresenca, setBuscaPresenca] = useState('');
+  const [resultadosPresenca, setResultadosPresenca] = useState<MembroListItem[]>([]);
+  const debouncePresenca = useRef<ReturnType<typeof setTimeout>>();
 
   // Busca de membro p/ dirigente/pregador
   const [campoPessoa, setCampoPessoa] = useState<'dirigente' | 'pregador' | null>(null);
@@ -106,7 +114,60 @@ const CultosPage: React.FC = () => {
     return () => clearTimeout(debounce.current);
   }, [buscaPessoa, campoPessoa]);
 
+  // Busca de membro p/ presença nominal
+  useEffect(() => {
+    clearTimeout(debouncePresenca.current);
+    const termo = buscaPresenca.trim();
+    if (termo.length < 2) {
+      setResultadosPresenca([]);
+      return;
+    }
+    debouncePresenca.current = setTimeout(async () => {
+      try {
+        const r = await membrosApi.listar({ q: termo, status: 'ativo', por_pagina: 10 });
+        setResultadosPresenca(r.itens);
+      } catch {
+        setResultadosPresenca([]);
+      }
+    }, 300);
+    return () => clearTimeout(debouncePresenca.current);
+  }, [buscaPresenca]);
+
   const totalPaginas = Math.max(1, Math.ceil(total / porPagina));
+
+  const abrirPresenca = async (c: Culto) => {
+    setModalPresenca(c);
+    setBuscaPresenca('');
+    setErroForm('');
+    try {
+      setPresencas(await cultosApi.presencas(c.id));
+    } catch {
+      setPresencas([]);
+    }
+  };
+
+  const adicionarPresenca = async (m: MembroListItem) => {
+    if (!modalPresenca) return;
+    setErroForm('');
+    try {
+      setPresencas(await cultosApi.adicionarPresenca(modalPresenca.id, m.pessoa_id));
+      setBuscaPresenca('');
+      setResultadosPresenca([]);
+      carregar();
+    } catch (e) {
+      setErroForm(e instanceof ApiError ? e.message : 'Erro ao marcar presença.');
+    }
+  };
+
+  const removerPresenca = async (pessoaId: number) => {
+    if (!modalPresenca) return;
+    try {
+      setPresencas(await cultosApi.removerPresenca(modalPresenca.id, pessoaId));
+      carregar();
+    } catch (e) {
+      setErroForm(e instanceof ApiError ? e.message : 'Erro ao remover presença.');
+    }
+  };
 
   const abrirNovo = () => {
     setCulto(CULTO_VAZIO);
@@ -341,10 +402,23 @@ const CultosPage: React.FC = () => {
                     {c.tema && c.pregador_nome && ' — '}
                     {c.pregador_nome ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{c.total_presentes ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {c.total_presentes ?? '—'}
+                    {(c.total_nomeados ?? 0) > 0 && (
+                      <span className="ml-1 text-xs text-gray-400">({c.total_nomeados} nominais)</span>
+                    )}
+                  </td>
                   {podeEditar && (
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
+                        <button
+                          onClick={() => abrirPresenca(c)}
+                          className="p-1.5 text-gray-400 hover:text-green-600 transition-colors"
+                          aria-label={`Chamada nominal do culto de ${formatarData(c.data)}`}
+                          title="Chamada nominal"
+                        >
+                          <Users size={16} />
+                        </button>
                         <button
                           onClick={() => abrirEditar(c)}
                           className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
@@ -472,6 +546,71 @@ const CultosPage: React.FC = () => {
               <Plus size={16} />
             </button>
           </div>
+        </Modal>
+      )}
+
+      {/* Modal chamada nominal */}
+      {modalPresenca && (
+        <Modal
+          titulo={`Chamada nominal — ${modalPresenca.tipo_nome} · ${formatarData(modalPresenca.data)}`}
+          onClose={() => setModalPresenca(null)}
+          largura="max-w-lg"
+        >
+          {erroForm && (
+            <div className="rounded-lg bg-red-50 text-red-800 text-sm px-4 py-3 mb-4" role="alert">{erroForm}</div>
+          )}
+          <p className="text-xs text-gray-500 mb-3">
+            {presencas.length} membro(s) marcado(s)
+            {modalPresenca.total_presentes !== null && ` · total de presentes no culto: ${modalPresenca.total_presentes}`}
+          </p>
+          {presencas.length === 0 ? (
+            <p className="text-sm text-gray-500 mb-3">Nenhuma presença nominal registrada.</p>
+          ) : (
+            <ul className="divide-y border rounded-lg mb-4 max-h-64 overflow-auto">
+              {presencas.map((p) => (
+                <li key={p.pessoa_id} className="px-3 py-2 text-sm flex items-center justify-between">
+                  <span className="text-gray-800">{p.nome_completo}</span>
+                  {podeEditar && (
+                    <button
+                      onClick={() => removerPresenca(p.pessoa_id)}
+                      className="p-1 text-gray-400 hover:text-red-600"
+                      aria-label={`Remover ${p.nome_completo}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {podeEditar && (
+            <div className="relative">
+              <input
+                type="search"
+                placeholder="Buscar membro ativo para marcar presença…"
+                value={buscaPresenca}
+                onChange={(e) => setBuscaPresenca(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                aria-label="Buscar membro para marcar presença"
+              />
+              {resultadosPresenca.length > 0 && (
+                <ul className="absolute z-10 bottom-full mb-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-auto">
+                  {resultadosPresenca.map((m) => (
+                    <li key={m.pessoa_id}>
+                      <button
+                        type="button"
+                        onClick={() => adicionarPresenca(m)}
+                        disabled={presencas.some((p) => p.pessoa_id === m.pessoa_id)}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 disabled:opacity-40"
+                      >
+                        {m.nome_completo}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </Modal>
       )}
 

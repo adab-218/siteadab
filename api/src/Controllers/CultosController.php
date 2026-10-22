@@ -179,6 +179,41 @@ final class CultosController
         return Json::resposta($response, ['data' => ['ok' => true]]);
     }
 
+    // ----- presença nominal -----
+
+    public function listarPresencas(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        if (!$this->cultos->buscar($id)) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Culto não encontrado.', 404);
+        }
+        return Json::resposta($response, ['data' => $this->cultos->listarPresencas($id)]);
+    }
+
+    public function adicionarPresenca(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        if (!$this->cultos->buscar($id)) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Culto não encontrado.', 404);
+        }
+        $pessoaId = (int) (((array) $request->getParsedBody())['pessoa_id'] ?? 0);
+        if (!$this->pessoasCheck->pessoaEhMembro($pessoaId)) {
+            return Json::erro($response, 'VALIDACAO', 'pessoa_id deve ser um membro.', 400);
+        }
+        $this->cultos->adicionarPresenca($id, $pessoaId);
+        return Json::resposta($response, ['data' => $this->cultos->listarPresencas($id)], 201);
+    }
+
+    public function removerPresenca(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        if (!$this->cultos->buscar($id)) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Culto não encontrado.', 404);
+        }
+        $this->cultos->removerPresenca($id, (int) $args['pessoa_id']);
+        return Json::resposta($response, ['data' => $this->cultos->listarPresencas($id)]);
+    }
+
     // -----------------------------------------------------------------
 
     /** @return string[] */

@@ -1,15 +1,18 @@
-%% M3 Cultos — revisado em 2026-10-21
-%% Fonte: api/index.php, api/src/Controllers/CultosController.php,
+%% M3 Cultos — revisado em 2026-10-22
+%% Fonte: api/src/App.php, api/src/Controllers/CultosController.php,
 %%        api/src/Repositories/CultoRepository.php,
 %%        api/migrations/0002+0008, src/pages/admin/CultosPage.tsx
 flowchart TD
     subgraph ROTAS["grupo autenticado (Auth → CSRF)"]
         GT["GET /tipos-culto<br/>(catálogo; ?ativo=)"]
         CT["POST/PUT/DELETE /tipos-culto<br/>(secretaria, admin; DELETE→ativo=0)"]
-        GL["GET /cultos?de=&ate=&tipo=<br/>→ paginado"]
+        GL["GET /cultos?de=&ate=&tipo=<br/>→ paginado + total_nomeados"]
         PC["POST /cultos<br/>(secretaria, dirigente, admin)"]
         PU["PUT /cultos/{id}"]
         PD["DELETE /cultos/{id}<br/>hard delete (presenças cascata)"]
+        GP["GET /cultos/{id}/presencas<br/>lista nominal (autenticado)"]
+        PP["POST …/presencas {pessoa_id}<br/>só membro; uq → INSERT IGNORE"]
+        RP["DELETE …/presencas/{pessoa_id}"]
     end
 
     PC --> VAL{"tipo ativo? data?<br/>dirigente/pregador<br/>são membros? totais ≥0?"}
@@ -23,7 +26,8 @@ flowchart TD
         LISTA["tabela: data, tipo, horário,<br/>tema/pregador, presentes"]
         FORM["Modal culto: tipo (sugere<br/>horário padrão), data, hora,<br/>dirigente/pregador (busca),<br/>tema, totais, observações"]
         TIPOS["Modal tipos: lista + criar<br/>+ ativar/desativar"]
-        FILT --> LISTA --> FORM & TIPOS
+        CHAMADA["Modal chamada nominal:<br/>busca membro → marca presença;<br/>remove por pessoa; mostra<br/>nominais vs. total_presentes"]
+        FILT --> LISTA --> FORM & TIPOS & CHAMADA
     end
 
     subgraph SEED["Migration 0008 (INSERT IGNORE — D12)"]

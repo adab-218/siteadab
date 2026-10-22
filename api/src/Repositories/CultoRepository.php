@@ -102,7 +102,8 @@ final class CultoRepository
                     c.dirigente_id, pd.nome_completo AS dirigente_nome,
                     c.pregador_id, pp.nome_completo AS pregador_nome,
                     c.tema, c.total_presentes, c.total_visitantes, c.total_decisoes,
-                    c.observacoes
+                    c.observacoes,
+                    (SELECT COUNT(*) FROM culto_presencas cp WHERE cp.culto_id = c.id) AS total_nomeados
                FROM cultos c
                JOIN tipos_culto t ON t.id = c.tipo_culto_id
                LEFT JOIN pessoas pd ON pd.id = c.dirigente_id
@@ -158,5 +159,34 @@ final class CultoRepository
     public function remover(int $id): void
     {
         $this->pdo->prepare('DELETE FROM cultos WHERE id = ?')->execute([$id]);
+    }
+
+    // ----- presença nominal (culto_presencas) -----
+
+    /** @return array<int,array<string,mixed>> */
+    public function listarPresencas(int $cultoId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT cp.pessoa_id, p.nome_completo
+               FROM culto_presencas cp
+               JOIN pessoas p ON p.id = cp.pessoa_id
+              WHERE cp.culto_id = ?
+              ORDER BY p.nome_completo'
+        );
+        $stmt->execute([$cultoId]);
+        return $stmt->fetchAll();
+    }
+
+    /** uq_culto_pessoa → INSERT IGNORE é idempotente. */
+    public function adicionarPresenca(int $cultoId, int $pessoaId): void
+    {
+        $this->pdo->prepare('INSERT IGNORE INTO culto_presencas (culto_id, pessoa_id) VALUES (?, ?)')
+                  ->execute([$cultoId, $pessoaId]);
+    }
+
+    public function removerPresenca(int $cultoId, int $pessoaId): void
+    {
+        $this->pdo->prepare('DELETE FROM culto_presencas WHERE culto_id = ? AND pessoa_id = ?')
+                  ->execute([$cultoId, $pessoaId]);
     }
 }

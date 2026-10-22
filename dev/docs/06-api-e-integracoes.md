@@ -95,7 +95,9 @@ Dados iniciais (D12) aplicados pela migration `0008` (INSERT IGNORE).
 | POST | `/api/cultos` | admin, secretaria, dirigente | ✅ |
 | PUT | `/api/cultos/{id}` | admin, secretaria, dirigente | ✅ |
 | DELETE | `/api/cultos/{id}` (hard delete; presenças em cascata) | admin, secretaria, dirigente | ✅ |
-| POST | `/api/cultos/{id}/presencas` — chamada nominal | admin, secretaria, dirigente | pendente |
+| GET | `/api/cultos/{id}/presencas` — lista nominal (`pessoa_id`, `nome`) | autenticado | ✅ |
+| POST | `/api/cultos/{id}/presencas` `{pessoa_id}` — só membros; `uq_culto_pessoa` → add idempotente | admin, secretaria, dirigente | ✅ |
+| DELETE | `/api/cultos/{id}/presencas/{pessoa_id}` | admin, secretaria, dirigente | ✅ |
 
 ### Eventos (M4)
 
