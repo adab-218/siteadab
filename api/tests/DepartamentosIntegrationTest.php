@@ -91,7 +91,7 @@ final class DepartamentosIntegrationTest extends TestCase
         $membros = new MembroRepository($pdo);
 
         $liderId = $this->membroAtivo('Lider Tal');
-        $pdo->exec("INSERT INTO departamentos (nome, lider_id) VALUES ('Dele'), ('Nao Dele')");
+        $pdo->exec("INSERT INTO departamentos (nome, lider_id) VALUES ('Dele', {$liderId}), ('Nao Dele', NULL)");
         $deleId = (int) $pdo->lastInsertId();
 
         $this->assertTrue($repo->lidera($deleId, $liderId));
