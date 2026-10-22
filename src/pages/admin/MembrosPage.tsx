@@ -14,6 +14,7 @@ import {
   StatusMembro,
 } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
+import { mascaraTelefone } from '../../lib/mascaras';
 
 const STATUS_LABEL: Record<StatusMembro, string> = {
   ativo: 'Ativo',
@@ -351,7 +352,16 @@ const MembrosPage: React.FC = () => {
                 </select>
               </div>
               <Field id="p-cpf" label="CPF" value={pessoa.cpf ?? ''} onChange={setP('cpf')} placeholder="000.000.000-00" />
-              <Field id="p-tel" label="Telefone" value={pessoa.telefone ?? ''} onChange={setP('telefone')} />
+              <Field
+                id="p-tel"
+                label="Telefone"
+                type="tel"
+                inputMode="tel"
+                maxLength={15}
+                placeholder="(91) 98765-4321"
+                value={pessoa.telefone ?? ''}
+                onChange={(e) => setPessoa((p) => ({ ...p, telefone: mascaraTelefone(e.target.value) }))}
+              />
               <Field id="p-email" label="E-mail" type="email" value={pessoa.email ?? ''} onChange={setP('email')} />
             </fieldset>
 
