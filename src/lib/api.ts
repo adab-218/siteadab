@@ -41,7 +41,10 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     options.body = '{}';
   }
   const headers = new Headers(options.headers);
-  if (!headers.has('Content-Type') && options.body) {
+  // FormData: NÃO setar Content-Type — o browser gera
+  // "multipart/form-data; boundary=..." e sem o boundary o PHP
+  // não popula $_FILES (uploads).
+  if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
   if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes((options.method ?? 'GET').toUpperCase())) {
