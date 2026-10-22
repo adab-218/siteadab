@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Adab\Api\Controllers;
 
 use Adab\Api\Json;
+use Adab\Api\Uploads;
 use Adab\Api\Validacao;
 use Adab\Api\Repositories\MembroRepository;
 use Adab\Api\Repositories\PessoaRepository;
@@ -22,11 +23,13 @@ final class MembrosController
 {
     private PessoaRepository $pessoas;
     private MembroRepository $membros;
+    private Uploads $uploads;
 
-    public function __construct(private PDO $pdo)
+    public function __construct(private PDO $pdo, string $uploadsDir)
     {
         $this->pessoas = new PessoaRepository($pdo);
         $this->membros = new MembroRepository($pdo);
+        $this->uploads = new Uploads($uploadsDir);
     }
 
     public function listar(Request $request, Response $response): Response
@@ -186,6 +189,41 @@ final class MembrosController
         }
         $this->membros->softDelete($id);
         return Json::resposta($response, ['data' => ['ok' => true]]);
+    }
+
+    // ----- foto do membro -----
+
+    public function foto(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $membro = $this->membros->buscarComPessoa($id);
+        if (!$membro) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Membro não encontrado.', 404);
+        }
+        $arquivo = ($request->getUploadedFiles())['arquivo'] ?? null;
+        if (!$arquivo) {
+            return Json::erro($response, 'VALIDACAO', 'Envie a imagem no campo "arquivo".', 400);
+        }
+        try {
+            $url = $this->uploads->salvarImagem($arquivo, 'membros', "membro_{$id}");
+        } catch (\RuntimeException $e) {
+            return Json::erro($response, $e->getMessage(), Uploads::mensagem($e->getMessage()), 400);
+        }
+        $this->uploads->remover($membro['foto_url']);
+        $this->pessoas->atualizar($id, ['foto_url' => $url]);
+        return Json::resposta($response, ['data' => $this->membros->buscarComPessoa($id)]);
+    }
+
+    public function removerFoto(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $membro = $this->membros->buscarComPessoa($id);
+        if (!$membro) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Membro não encontrado.', 404);
+        }
+        $this->uploads->remover($membro['foto_url']);
+        $this->pessoas->atualizar($id, ['foto_url' => null]);
+        return Json::resposta($response, ['data' => $this->membros->buscarComPessoa($id)]);
     }
 
     // -----------------------------------------------------------------

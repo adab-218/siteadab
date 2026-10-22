@@ -1,7 +1,7 @@
-%% M1 Membros — CRUD + desvinculação D1 — revisado em 2026-10-21
-%% Fonte: api/index.php, api/src/Controllers/MembrosController.php,
+%% M1 Membros — CRUD + desvinculação D1 + foto — revisado em 2026-10-22
+%% Fonte: api/src/App.php, api/src/Controllers/MembrosController.php,
 %%        api/src/Repositories/{Pessoa,Membro}Repository.php,
-%%        src/pages/admin/MembrosPage.tsx
+%%        api/src/Uploads.php, src/pages/admin/MembrosPage.tsx
 flowchart TD
     subgraph ROTAS["/api/membros (grupo autenticado: Auth → CSRF)"]
         GL["GET /membros?q=&status=&depto=&pagina="]
@@ -9,8 +9,14 @@ flowchart TD
         PC["POST /membros<br/>(secretaria, admin)"]
         PU["PUT /membros/{id}<br/>(secretaria, admin)"]
         PS["PATCH /membros/{id}/status<br/>(secretaria, admin)"]
-        PD["DELETE /membros/{id}<br/>(só admin → soft delete)"]
+        PD["DELETE /membros/{id}<br/>(só admin → soft delete + D1)"]
+        PF["POST /membros/{id}/foto<br/>(multipart 'arquivo' — secretaria, admin)"]
+        PF2["DELETE /membros/{id}/foto"]
     end
+
+    PF --> UPL{"Uploads::salvarImagem<br/>mime via findo (JPG/PNG/WebP)<br/>≤ 2MB?"}
+    UPL -- não --> E400U["400 UPLOAD_FALHOU /<br/>ARQUIVO_GRANDE / TIPO_INVALIDO"]
+    UPL -- ok --> SAVE["grava uploads/membros/<br/>apaga foto antiga<br/>pessoas.foto_url = /uploads/..."]
 
     GL --> ESC{"perfil =<br/>lider_departamento?"}
     ESC -- sim --> DEP["limita a departamentos<br/>liderados (D5)"]
@@ -39,6 +45,7 @@ flowchart TD
         FORM["Modal criar/editar<br/>(Field acessível)"]
         STMOD["Modal status (aviso D1)"]
         DEL["Confirmar exclusão (só admin)"]
+        FOTO["ImagemUpload — foto do<br/>membro (só em edição)"]
         LIST --> FORM & STMOD & DEL
         FORM & STMOD & DEL -->|apiFetch + CSRF| ROTAS
     end

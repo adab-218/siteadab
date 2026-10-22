@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Adab\Api\Controllers;
 
 use Adab\Api\Json;
+use Adab\Api\Uploads;
 use Adab\Api\Validacao;
 use Adab\Api\Repositories\DepartamentoRepository;
 use Adab\Api\Repositories\EventoRepository;
@@ -21,11 +22,13 @@ final class EventosController
 {
     private EventoRepository $eventos;
     private DepartamentoRepository $pessoasCheck; // pessoaEhMembro
+    private Uploads $uploads;
 
-    public function __construct(PDO $pdo)
+    public function __construct(PDO $pdo, string $uploadsDir)
     {
         $this->eventos = new EventoRepository($pdo);
         $this->pessoasCheck = new DepartamentoRepository($pdo);
+        $this->uploads = new Uploads($uploadsDir);
     }
 
     public function listar(Request $request, Response $response): Response
@@ -143,6 +146,41 @@ final class EventosController
         }
         $this->eventos->removerAtividade($aid);
         return Json::resposta($response, ['data' => ['ok' => true]]);
+    }
+
+    // ----- banner -----
+
+    public function banner(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $evento = $this->eventos->buscar($id);
+        if (!$evento) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Evento não encontrado.', 404);
+        }
+        $arquivo = ($request->getUploadedFiles())['arquivo'] ?? null;
+        if (!$arquivo) {
+            return Json::erro($response, 'VALIDACAO', 'Envie a imagem no campo "arquivo".', 400);
+        }
+        try {
+            $url = $this->uploads->salvarImagem($arquivo, 'eventos', "evento_{$id}");
+        } catch (\RuntimeException $e) {
+            return Json::erro($response, $e->getMessage(), Uploads::mensagem($e->getMessage()), 400);
+        }
+        $this->uploads->remover($evento['banner_url']);
+        $this->eventos->atualizar($id, ['banner_url' => $url]);
+        return Json::resposta($response, ['data' => $this->eventos->buscar($id)]);
+    }
+
+    public function removerBanner(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $evento = $this->eventos->buscar($id);
+        if (!$evento) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Evento não encontrado.', 404);
+        }
+        $this->uploads->remover($evento['banner_url']);
+        $this->eventos->atualizar($id, ['banner_url' => null]);
+        return Json::resposta($response, ['data' => $this->eventos->buscar($id)]);
     }
 
     // -----------------------------------------------------------------

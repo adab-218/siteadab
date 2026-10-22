@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Menu, X, ChevronRight, Users, Heart, BookOpen, HandHeart, MapPin, Mail, Facebook, Calendar } from 'lucide-react';
+import { Menu, X, ChevronRight, Users, Heart, BookOpen, HandHeart, MapPin, Mail, Facebook, Calendar, LogIn } from 'lucide-react';
 import WeeklySchedule from './components/WeeklySchedule';
 import EventoPublicoCard from './components/EventoPublicoCard';
 import { EventoPublico, publicApi } from './lib/api';
@@ -105,6 +105,14 @@ const App: React.FC = () => {
             <button className="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition-colors duration-200 font-semibold">
               Contribua
             </button>
+            <Link
+              to="/login"
+              className="text-gray-500 hover:text-red-600 transition-colors flex items-center gap-1 text-sm"
+              aria-label="Área restrita — login do painel"
+            >
+              <LogIn size={16} />
+              Área restrita
+            </Link>
           </nav>
 
           {/* Mobile Menu Button */}
@@ -146,6 +154,14 @@ const App: React.FC = () => {
               >
                 Contribua
               </button>
+              <Link
+                to="/login"
+                onClick={closeMenu}
+                className="flex items-center gap-2 text-gray-500 hover:text-red-600 transition-colors text-sm"
+              >
+                <LogIn size={16} />
+                Área restrita
+              </Link>
             </nav>
           </div>
         )}

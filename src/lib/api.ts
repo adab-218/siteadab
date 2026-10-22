@@ -61,6 +61,13 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   return body.data as T;
 }
 
+/** Upload multipart (foto/banner) — FormData define o boundary sozinho. */
+export function apiUpload<T>(path: string, arquivo: File): Promise<T> {
+  const fd = new FormData();
+  fd.append('arquivo', arquivo);
+  return apiFetch<T>(path, { method: 'POST', body: fd });
+}
+
 // ---------------------------------------------------------------------
 // Auth
 
@@ -169,6 +176,7 @@ export interface PessoaPayload {
   bairro?: string | null;
   cidade?: string | null;
   uf?: string | null;
+  foto_url?: string | null;
   observacoes?: string | null;
 }
 
@@ -225,6 +233,10 @@ export const membrosApi = {
     }),
   remover: (id: number) =>
     apiFetch<{ ok: true }>(`/membros/${id}`, { method: 'DELETE' }),
+  enviarFoto: (id: number, arquivo: File) =>
+    apiUpload<MembroDetalhe>(`/membros/${id}/foto`, arquivo),
+  removerFoto: (id: number) =>
+    apiFetch<MembroDetalhe>(`/membros/${id}/foto`, { method: 'DELETE' }),
   aniversariantes: (mes?: number) =>
     apiFetch<{ mes: number; itens: Aniversariante[] }>(
       `/membros/aniversariantes${mes ? `?mes=${mes}` : ''}`
@@ -467,6 +479,10 @@ export const eventosApi = {
     apiFetch<Evento>(`/eventos/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
   remover: (id: number) =>
     apiFetch<{ ok: true }>(`/eventos/${id}`, { method: 'DELETE' }),
+  enviarBanner: (id: number, arquivo: File) =>
+    apiUpload<Evento>(`/eventos/${id}/banner`, arquivo),
+  removerBanner: (id: number) =>
+    apiFetch<Evento>(`/eventos/${id}/banner`, { method: 'DELETE' }),
 
   criarAtividade: (id: number, dados: Partial<EventoAtividade>) =>
     apiFetch<EventoAtividade>(`/eventos/${id}/atividades`, {

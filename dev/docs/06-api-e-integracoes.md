@@ -42,7 +42,8 @@ Implementadas (M1): leitura aberta a todo perfil autenticado —
 | PUT | `/api/membros/{id}` `{pessoa, membro}` | admin, secretaria | ✅ |
 | PATCH | `/api/membros/{id}/status` `{status, data_status?}` — ao sair de `ativo` desvincula deptos/EBD/usuário (D1) | admin, secretaria | ✅ |
 | DELETE | `/api/membros/{id}` soft delete — aplica D1 também (deptos, EBD, usuário) | só admin | ✅ |
-| POST | `/api/membros/{id}/foto` | admin, secretaria | pendente (uploads) |
+| POST | `/api/membros/{id}/foto` — multipart campo `arquivo` (JPG/PNG/WebP ≤ 2 MB) | admin, secretaria | ✅ |
+| DELETE | `/api/membros/{id}/foto` | admin, secretaria | ✅ |
 | GET | `/api/membros/aniversariantes?mes=` | painel | pendente |
 | POST | `/api/membros/importar` (CSV) | admin, secretaria | pendente (D9) |
 | GET | `/api/membros/exportar.csv` | admin, secretaria | pendente |
@@ -117,7 +118,8 @@ Escritas: admin, secretaria, dirigente.
 | DELETE | `/api/eventos/{id}` — soft delete | ✅ |
 | POST | `/api/eventos/{id}/atividades` `{titulo, data, horario_inicio?, horario_fim?, responsavel_id?, descricao?}` | ✅ |
 | PUT/DELETE | `/api/eventos/{id}/atividades/{aid}` | ✅ |
-| POST | `/api/eventos/{id}/banner` — upload de imagem | pendente |
+| POST | `/api/eventos/{id}/banner` — multipart campo `arquivo` (JPG/PNG/WebP ≤ 2 MB) | ✅ |
+| DELETE | `/api/eventos/{id}/banner` | ✅ |
 
 ### Ações (M5)
 

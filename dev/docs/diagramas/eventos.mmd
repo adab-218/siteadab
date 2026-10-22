@@ -9,11 +9,15 @@ flowchart TD
         GV["GET /eventos/{id}<br/>+ atividades[]"]
         PC["POST /eventos"]
         PU["PUT/DELETE /eventos/{id}<br/>(soft delete)"]
-        PA["POST/PUT/DELETE<br/>/eventos/{id}/atividades/{aid}"]
+        PA["POST/PUT/DELETE<br/>/eventos/{id}/atividades/{aid}<br/>(escopado ao evento)"]
+        PB["POST/DELETE<br/>/eventos/{id}/banner<br/>(multipart 'arquivo')"]
     end
 
     PC --> VAL{"nome? tipo no enum?<br/>datas? fim ≥ início?"}
     VAL -- não --> E400["400 VALIDACAO"]
+    PB --> UPL{"Uploads::salvarImagem<br/>finfo JPG/PNG/WebP ≤2MB?"}
+    UPL -- não --> E400B["400 TIPO_INVALIDO /<br/>ARQUIVO_GRANDE"]
+    UPL -- ok --> SAV["uploads/eventos/<br/>apaga banner antigo<br/>eventos.banner_url"]
 
     subgraph PUB["publicacao automática"]
         FLG["publico=1"] --> GATE{"status ≠ cancelado<br/>+ dentro do período?"}
@@ -25,7 +29,7 @@ flowchart TD
     subgraph FE["EventosPage (/admin/eventos)"]
         F["filtros: período/tipo/status"]
         T["tabela: nome, tipo, período,<br/>local, status, ícone público"]
-        M["Modal evento: nome, tipo,<br/>datas, local, status,<br/>publico☐, banner_url"]
+        M["Modal evento: nome, tipo,<br/>datas, local, status,<br/>publico☐, ImagemUpload banner<br/>(só em edição)"]
         D["Modal detalhe: atividades<br/>(titulo/data/horas/responsável)"]
         F --> T --> M & D
     end

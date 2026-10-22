@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2, Pencil, Plus, Search, Trash2, UserCog } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Field from '../../components/ui/Field';
+import ImagemUpload from '../../components/ui/ImagemUpload';
 import {
   ApiError,
   Cargo,
@@ -57,6 +58,7 @@ const MembrosPage: React.FC = () => {
   const [erroForm, setErroForm] = useState('');
   const [cargos, setCargos] = useState<Cargo[]>([]);
   const [detalheDeptos, setDetalheDeptos] = useState<{ nome: string; funcao: string | null }[]>([]);
+  const [fotoAtual, setFotoAtual] = useState<string | null>(null);
 
   useEffect(() => {
     cargosApi.listar().then(setCargos).catch(() => setCargos([]));
@@ -91,6 +93,7 @@ const MembrosPage: React.FC = () => {
     setPessoa(PESSOA_VAZIA);
     setMembro(MEMBRO_VAZIO);
     setDetalheDeptos([]);
+    setFotoAtual(null);
     setErroForm('');
     setModalForm({});
   };
@@ -129,6 +132,7 @@ const MembrosPage: React.FC = () => {
       setDetalheDeptos(
         (m.departamentos ?? []).map((d) => ({ nome: d.nome, funcao: d.funcao }))
       );
+      setFotoAtual(m.foto_url ?? null);
       setModalForm({ id });
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : 'Erro ao abrir membro.');
@@ -382,6 +386,23 @@ const MembrosPage: React.FC = () => {
                 Batizado(a) no Espírito Santo
               </label>
             </fieldset>
+
+            {modalForm.id && (
+              <div className="border-t pt-4">
+                <ImagemUpload
+                  rotulo="Foto do membro"
+                  url={fotoAtual}
+                  enviar={async (arq) => {
+                    const m = await membrosApi.enviarFoto(modalForm.id!, arq);
+                    setFotoAtual(m.foto_url ?? null);
+                  }}
+                  remover={async () => {
+                    await membrosApi.removerFoto(modalForm.id!);
+                    setFotoAtual(null);
+                  }}
+                />
+              </div>
+            )}
 
             {detalheDeptos.length > 0 && (
               <div className="border-t pt-4">

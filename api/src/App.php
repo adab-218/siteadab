@@ -68,7 +68,7 @@ function criarApp(PDO $pdo, array $config): App
     $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
         $g->get('/cargos', [new CatalogosController($pdo), 'cargos']);
 
-        $membros = new MembrosController($pdo);
+        $membros = new MembrosController($pdo, (string) ($config['uploads_dir'] ?? ''));
         $g->group('/membros', function (RouteCollectorProxy $m) use ($membros) {
             $m->get('', [$membros, 'listar']);
             $m->get('/aniversariantes', [$membros, 'aniversariantes']);
@@ -78,6 +78,10 @@ function criarApp(PDO $pdo, array $config): App
             $m->put('/{id}', [$membros, 'atualizar'])
               ->add(PerfilMiddleware::para(['secretaria']));
             $m->patch('/{id}/status', [$membros, 'status'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $m->post('/{id}/foto', [$membros, 'foto']) // multipart "arquivo"
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $m->delete('/{id}/foto', [$membros, 'removerFoto'])
               ->add(PerfilMiddleware::para(['secretaria']));
             $m->delete('/{id}', [$membros, 'remover'])
               ->add(PerfilMiddleware::para([])); // lista vazia = só admin
@@ -132,7 +136,7 @@ function criarApp(PDO $pdo, array $config): App
 
         // M4 Eventos: CRUD + programação interna (atividades).
         // Escrita: secretaria/dirigente/admin; leitura: qualquer autenticado.
-        $eventos = new EventosController($pdo);
+        $eventos = new EventosController($pdo, (string) ($config['uploads_dir'] ?? ''));
         $g->group('/eventos', function (RouteCollectorProxy $e) use ($eventos) {
             $e->get('', [$eventos, 'listar']);
             $e->get('/{id}', [$eventos, 'ver']);
@@ -147,6 +151,10 @@ function criarApp(PDO $pdo, array $config): App
             $e->put('/{id}/atividades/{aid}', [$eventos, 'atualizarAtividade'])
               ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
             $e->delete('/{id}/atividades/{aid}', [$eventos, 'removerAtividade'])
+              ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+            $e->post('/{id}/banner', [$eventos, 'banner']) // multipart "arquivo"
+              ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+            $e->delete('/{id}/banner', [$eventos, 'removerBanner'])
               ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
         });
 

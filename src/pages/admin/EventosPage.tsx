@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Calendar, CalendarPlus, Globe, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
+import ImagemUpload from '../../components/ui/ImagemUpload';
 import Field from '../../components/ui/Field';
 import {
   ApiError,
@@ -373,7 +374,23 @@ const EventosPage: React.FC = () => {
                 </select>
               </div>
             </div>
-            <Field id="e-banner" label="URL do banner (opcional)" type="url" placeholder="https://… ou /uploads/…" value={evento.banner_url ?? ''} onChange={(e) => setEvento((f) => ({ ...f, banner_url: e.target.value || null }))} />
+            {modalForm.id ? (
+              <ImagemUpload
+                rotulo="Banner do evento"
+                formato="banner"
+                url={evento.banner_url ?? null}
+                enviar={async (arq) => {
+                  const ev = await eventosApi.enviarBanner(modalForm.id!, arq);
+                  setEvento((f) => ({ ...f, banner_url: ev.banner_url }));
+                }}
+                remover={async () => {
+                  await eventosApi.removerBanner(modalForm.id!);
+                  setEvento((f) => ({ ...f, banner_url: null }));
+                }}
+              />
+            ) : (
+              <p className="text-sm text-gray-500">Salve o evento para depois enviar o banner.</p>
+            )}
             <Field id="e-desc" label="Descrição" value={evento.descricao ?? ''} onChange={(e) => setEvento((f) => ({ ...f, descricao: e.target.value }))} />
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input
