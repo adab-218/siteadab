@@ -134,7 +134,10 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       períodos D4 + aulas domingos/pontuais D8, chamada D3, relatórios;
       `EbdPage` 4 abas; `EbdIntegrationTest`). Restam: chamada nominal
       de cultos (`culto_presencas`), upload de banner/foto, CSV (D9)
-- [ ] T2.5 Testes de autorização negativa por perfil (CI c/ MySQL service)
+- [x] T2.5 `AutorizacaoIntegrationTest` — HTTP real na app (criarApp
+      extraída p/ api/src/App.php): 401 sem sessão, 403 sem CSRF,
+      matriz 17 casos perfil×rota negativos, gate D3 (professor só na
+      sua classe), gate D5 (líder só no seu depto), controles positivos (CI c/ MySQL service)
 - [ ] T2.6 E2E Playwright (após 1º fluxo completo)
 
 ## DECISÕES — pendentes do cliente (bloqueiam partes do T2)
