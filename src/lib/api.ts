@@ -382,3 +382,80 @@ export const cultosApi = {
   remover: (id: number) =>
     apiFetch<{ ok: true }>(`/cultos/${id}`, { method: 'DELETE' }),
 };
+
+// ---------------------------------------------------------------------
+// Eventos (M4)
+
+export type EventoTipo = 'congresso' | 'festividade' | 'culto_especial' | 'data_comemorativa' | 'outro';
+export type EventoStatus = 'planejado' | 'confirmado' | 'realizado' | 'cancelado';
+
+export interface EventoAtividade {
+  id: number;
+  evento_id: number;
+  data: string;
+  horario_inicio: string | null;
+  horario_fim: string | null;
+  titulo: string;
+  responsavel_id: number | null;
+  responsavel_nome?: string | null;
+  descricao: string | null;
+}
+
+export interface Evento {
+  id: number;
+  nome: string;
+  tipo: EventoTipo;
+  data_inicio: string;
+  data_fim: string | null;
+  local: string | null;
+  descricao: string | null;
+  banner_url: string | null;
+  publico: number;
+  status: EventoStatus;
+  total_atividades?: number;
+  atividades?: EventoAtividade[];
+}
+
+export interface EventoPayload {
+  nome: string;
+  tipo: EventoTipo;
+  data_inicio: string;
+  data_fim?: string | null;
+  local?: string | null;
+  descricao?: string | null;
+  banner_url?: string | null;
+  publico?: boolean;
+  status?: EventoStatus;
+}
+
+export const eventosApi = {
+  listar(params: { de?: string; ate?: string; tipo?: string; status?: string; publico?: boolean; pagina?: number; por_pagina?: number } = {}) {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '') {
+        qs.set(k, String(v));
+      }
+    }
+    return apiFetch<RespostaPaginada<Evento>>(`/eventos?${qs}`);
+  },
+  ver: (id: number) => apiFetch<Evento>(`/eventos/${id}`),
+  criar: (dados: EventoPayload) =>
+    apiFetch<Evento>('/eventos', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizar: (id: number, dados: Partial<EventoPayload>) =>
+    apiFetch<Evento>(`/eventos/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
+  remover: (id: number) =>
+    apiFetch<{ ok: true }>(`/eventos/${id}`, { method: 'DELETE' }),
+
+  criarAtividade: (id: number, dados: Partial<EventoAtividade>) =>
+    apiFetch<EventoAtividade>(`/eventos/${id}/atividades`, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    }),
+  atualizarAtividade: (id: number, aid: number, dados: Partial<EventoAtividade>) =>
+    apiFetch<EventoAtividade>(`/eventos/${id}/atividades/${aid}`, {
+      method: 'PUT',
+      body: JSON.stringify(dados),
+    }),
+  removerAtividade: (id: number, aid: number) =>
+    apiFetch<{ ok: true }>(`/eventos/${id}/atividades/${aid}`, { method: 'DELETE' }),
+};

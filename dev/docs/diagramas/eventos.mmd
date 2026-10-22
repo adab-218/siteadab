@@ -1,0 +1,31 @@
+%% M4 Eventos — revisado em 2026-10-22
+%% Fonte: api/index.php, api/src/Controllers/EventosController.php,
+%%        api/src/Repositories/EventoRepository.php,
+%%        api/src/Repositories/ProgramacaoRepository.php,
+%%        src/pages/admin/EventosPage.tsx, src/App.tsx
+flowchart TD
+    subgraph ROTAS["grupo autenticado (Auth → CSRF)<br/>escrita: secretaria/dirigente/admin"]
+        GL["GET /eventos<br/>?de&ate&tipo&status&publico"]
+        GV["GET /eventos/{id}<br/>+ atividades[]"]
+        PC["POST /eventos"]
+        PU["PUT/DELETE /eventos/{id}<br/>(soft delete)"]
+        PA["POST/PUT/DELETE<br/>/eventos/{id}/atividades/{aid}"]
+    end
+
+    PC --> VAL{"nome? tipo no enum?<br/>datas? fim ≥ início?"}
+    VAL -- não --> E400["400 VALIDACAO"]
+
+    subgraph PUB["publicacao automática"]
+        FLG["publico=1"] --> GATE{"status ≠ cancelado<br/>+ dentro do período?"}
+        GATE -- sim --> PE["GET /public/eventos<br/>→ seção #eventos do site"]
+        GATE -- sim --> VW["v_programacao_publica<br/>→ WeeklySchedule"]
+        GATE -- não --> NOSHOW["não aparece no site"]
+    end
+
+    subgraph FE["EventosPage (/admin/eventos)"]
+        F["filtros: período/tipo/status"]
+        T["tabela: nome, tipo, período,<br/>local, status, ícone público"]
+        M["Modal evento: nome, tipo,<br/>datas, local, status,<br/>publico☐, banner_url"]
+        D["Modal detalhe: atividades<br/>(titulo/data/horas/responsável)"]
+        F --> T --> M & D
+    end

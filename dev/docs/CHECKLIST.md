@@ -129,10 +129,10 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       (perfil/ativo) e duplicidades; nav só p/ admin
 - [x] T2.3 Site público dinâmico — WeeklySchedule + seção Eventos
       (`EventoPublicoCard`, `/public/eventos`, oculta se vazia, menu atualizado)
-- [~] T2.4 Módulos — M3 Cultos ✅ (`CultoRepository`/`CultosController`,
-      tipos_culto CRUD, seed `0008` com tipos da programação do site +
-      cargos AD, `CultosPage`, `CultosIntegrationTest`). Restam:
-      Eventos, Ações, EBD, chamada nominal (`culto_presencas`)
+- [~] T2.4 Módulos — M3 Cultos ✅ M4 Eventos ✅ (`EventoRepository`/
+      `EventosController` + atividades, `EventosPage`, publico→site,
+      `EventosIntegrationTest`). Restam: M5 Ações, M6 EBD,
+      chamada nominal (`culto_presencas`), upload de banner
 - [ ] T2.5 Testes de autorização negativa por perfil (CI c/ MySQL service)
 - [ ] T2.6 E2E Playwright (após 1º fluxo completo)
 

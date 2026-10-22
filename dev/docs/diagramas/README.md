@@ -17,6 +17,7 @@ atualizados **no mesmo commit** de qualquer mudança que altere o fluxo
 | `departamentos.mmd` | M2: CRUD /departamentos + vínculo de membros (D5/D6) |
 | `usuarios.mmd` | T2.2: gestão de usuários só-admin + proteções próprio usuário |
 | `cultos.mmd` | M3: agenda de cultos + tipos + seed 0008 + D11 |
+| `eventos.mmd` | M4: eventos + atividades + publicação automática no site |
 
 ## Fluxos ainda sem diagrama (a criar quando implementados)
 

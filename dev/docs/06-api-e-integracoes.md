@@ -97,11 +97,25 @@ Dados iniciais (D12) aplicados pela migration `0008` (INSERT IGNORE).
 | DELETE | `/api/cultos/{id}` (hard delete; presenças em cascata) | admin, secretaria, dirigente | ✅ |
 | POST | `/api/cultos/{id}/presencas` — chamada nominal | admin, secretaria, dirigente | pendente |
 
-### Eventos / Ações
+### Eventos (M4)
+
+`publico=1` + não-cancelado + dentro do período alimenta `/public/eventos`
+e `v_programacao_publica` (WeeklySchedule) sem ação extra. Soft delete.
+Escritas: admin, secretaria, dirigente.
+
+| Método | Rota | Status |
+|--------|------|--------|
+| GET | `/api/eventos?de=&ate=&tipo=&status=&publico=&pagina=` | ✅ |
+| GET | `/api/eventos/{id}` — inclui `atividades[]` | ✅ |
+| POST/PUT | `/api/eventos`, `/{id}` `{nome, tipo, data_inicio, data_fim?, local?, descricao?, banner_url?, publico?, status?}` | ✅ |
+| DELETE | `/api/eventos/{id}` — soft delete | ✅ |
+| POST | `/api/eventos/{id}/atividades` `{titulo, data, horario_inicio?, horario_fim?, responsavel_id?, descricao?}` | ✅ |
+| PUT/DELETE | `/api/eventos/{id}/atividades/{aid}` | ✅ |
+| POST | `/api/eventos/{id}/banner` — upload de imagem | pendente |
+
+### Ações
 | Método | Rota | Perfil |
 |--------|------|--------|
-| GET/POST/PUT | `/api/eventos[/...]` (+ `/atividades`) | conforme matriz |
-| POST | `/api/eventos/{id}/banner` | admin, secretaria, dirigente |
 | GET/POST/PUT | `/api/acoes[/...]` | conforme matriz |
 | POST | `/api/acoes/{id}/voluntarios`, `/beneficiarios` | conforme matriz |
 

@@ -7,6 +7,7 @@ use Adab\Api\Controllers\AuthController;
 use Adab\Api\Controllers\CatalogosController;
 use Adab\Api\Controllers\CultosController;
 use Adab\Api\Controllers\DepartamentosController;
+use Adab\Api\Controllers\EventosController;
 use Adab\Api\Controllers\MembrosController;
 use Adab\Api\Controllers\PublicController;
 use Adab\Api\Controllers\UsuariosController;
@@ -169,6 +170,26 @@ $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
         $c->put('/{id}', [$cultos, 'atualizar'])
           ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
         $c->delete('/{id}', [$cultos, 'remover'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+    });
+
+    // M4 Eventos: CRUD + programação interna (atividades).
+    // Escrita: secretaria/dirigente/admin; leitura: qualquer autenticado.
+    $eventos = new EventosController($pdo);
+    $g->group('/eventos', function (RouteCollectorProxy $e) use ($eventos) {
+        $e->get('', [$eventos, 'listar']);
+        $e->get('/{id}', [$eventos, 'ver']);
+        $e->post('', [$eventos, 'criar'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $e->put('/{id}', [$eventos, 'atualizar'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $e->delete('/{id}', [$eventos, 'remover'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $e->post('/{id}/atividades', [$eventos, 'criarAtividade'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $e->put('/{id}/atividades/{aid}', [$eventos, 'atualizarAtividade'])
+          ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
+        $e->delete('/{id}/atividades/{aid}', [$eventos, 'removerAtividade'])
           ->add(PerfilMiddleware::para(['secretaria', 'dirigente']));
     });
 
