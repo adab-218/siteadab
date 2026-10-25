@@ -620,7 +620,7 @@ final class RifaRepository
         $premios = $this->listarPremios($rifaId);
 
         $eleg = $this->pdo->prepare(
-            "SELECT id FROM rifa_bilhetes
+            "SELECT numero FROM rifa_bilhetes
               WHERE rifa_id = ? AND status_pag IN ('pago','gratuito')
               ORDER BY numero"
         );
