@@ -1,201 +1,241 @@
-# Módulo M7 — Rifas Beneficentes por Departamento
+# Módulo M7 — Sorteios Beneficentes (multiprêmios, por departamentos)
 
 > **Status:** planejamento — aguardando decisões Dx antes de implementar.
 > Modelo de referência: módulo de sorteios do projeto Conectados
-> (`docs/03-modulos/MODULO_03_SORTEIOS.md`), adaptado à stack ADAB
-> (PHP 8.3 + Slim 4 + MySQL + sessão/CSRF, HostGator compartilhado).
+> (`conectados/docs/03-modulos/MODULO_03_SORTEIOS.md`), adaptado à stack
+> ADAB (PHP 8.3 + Slim 4 + MySQL + sessão/CSRF, HostGator compartilhado)
+> e ao cenário da igreja abaixo.
 
-## 1. Objetivo
+## 1. Cenário-alvo (requisito do usuário)
 
-Cada **departamento** da igreja (Missões, Infantil, Mocidade etc.) pode
-criar e gerir **rifas beneficentes** para arrecadar fundos. O público
-compra/reserva números numa página pública `adab.teo.br/rifa/{slug}` e o
-resultado é apurado com prova pública (seed + SHA-256) ou pela Loteria
-Federal — transparente e auditável.
+Um **sorteio especial multiprêmios** com dois propósitos: reforma do
+templo e caixa dos departamentos.
+
+- Cada **departamento doa um prêmio** (valor estimado R$ 100–200).
+- Cada **membro de departamento** recebe um **link exclusivo de
+  divulgação** — as vendas feitas por aquele link contam para o membro
+  e para o departamento dele (ranking e repasse).
+- O sorteio define **repartição percentual** da arrecadação por
+  propósito. Ex.: Construção do templo 60% / Departamentos 30% /
+  Escola Bíblica 10%.
+- Página pública de compra, apuração auditável (seed + SHA-256 ou
+  Loteria Federal).
+
+O modelo fica genérico o suficiente para rifas futuras de um depto só,
+mas o desenho nasce do cenário multiprêmios acima.
 
 ## 2. Escopo
 
 ### Dentro (MVP)
 
-- CRUD de rifas vinculadas a um departamento (título, descrição,
-  regulamento, valor do bilhete, quantidade de números, data do sorteio,
-  imagem de capa via `POST /rifas/{id}/capa` reaproveitando `Api\Uploads`)
-- Prêmios por rifa (título, descrição, valor estimado, imagem, ordem)
-- Ciclo de vida: `rascunho → ativo → encerrado → sorteado` (+ `cancelado`)
-- **Ativação só com ≥1 prêmio e regulamento preenchido** — distribuição
-  de prêmios exige regulamento público (Lei 5.768/1971, Decreto
-  70.951/1972); rifa beneficente de igreja precisa do mesmo cuidado
-- Página pública `/rifa/{slug}`: capa, prêmios, form de participação
-  (nome + telefone), consulta de bilhetes por telefone, resultado e prova
-- Bilhetes numerados sequenciais por rifa; reserva `pendente` até a
-  secretaria/líder marcar como `pago` (PIX manual — HostGator não roda
-  gateway de pagamento; cobrança via link `wa.me` com copia-e-cola PIX)
-- Apuração **sistema** (seed aleatória + SHA-256 por prêmio, prova
-  pública) e **federal** (organizador informa os números sorteados na
-  Loteria Federal; últimos N dígitos casam com bilhetes elegíveis, com
-  fallback determinístico) — mesmo algoritmo do Conectados
-- Painel admin: lista de rifas por departamento, gestão de bilhetes
-  (busca por nome/telefone/número, filtro por status de pagamento),
-  botão de copiar link público e link de cobrança `wa.me`
+- CRUD de sorteios: título, descrição, regulamento, valor do número,
+  total de números, data do sorteio, capa (reuso `Api\Uploads`),
+  método de apuração (`sistema`|`federal`)
+- **Prêmios por departamento**: cada prêmio registra o depto doador +
+  valor estimado (R$ 100–200) + imagem
+- **Links de divulgação por membro**: token único por
+  `(sorteio, membro)`; reserva feita via `?v={token}` atribui a venda ao
+  membro e ao departamento dele; venda sem token fica "sem divulgador"
+- **Repartição percentual**: lista `{destino, percentual}` por sorteio;
+  destino pode ser livre ("Construção do templo", "EBD") ou
+  "departamentos" com rateio proporcional às vendas de cada depto;
+  ativação exige Σ = 100%
+- Ciclo de vida `rascunho → ativo → encerrado → sorteado` (+cancelado);
+  ativação exige ≥1 prêmio, regulamento e repartição fechada em 100%
+- Página pública `/sorteio/{slug}`: capa, propósito, prêmios (com depto
+  doador), form de reserva (nome+telefone+qtde, link ?v= preservado),
+  "meus números" por telefone, resultado + prova pública
+- Painel admin: bilhetes (busca, pagar/estornar manual — PIX), ranking
+  de vendas por membro e por departamento, **extrato de repartição**
+  (arrecadado × % → valores por destino e por depto)
+- PIX copia-e-cola/chave exibida na confirmação da reserva (texto
+  configurável por sorteio)
 
 ### Fora (fases futuras)
 
-- Pagamento online real (Mercado Pago/webhook) — HostGator compartilhado
-  não suporta de forma confiável; manter PIX manual
-- Cartões presenciais com QR Code + impressão A4 (fase 2)
-- Chat ao vivo na página da rifa, player de live do YouTube (fase 2)
-- Notificação automática de vencedores (SMS/WhatsApp API) — no MVP o
-  responsável copia o resultado e envia manualmente
-- Sorteio **gratuito** (leads) e **patrocinado por terceiros** — aqui só
-  existe o tipo beneficente da igreja
+- Pagamento online real (gateway) — PIX manual
+- Cartões presenciais com QR + impressão A4; chat/live na página
+- Notificações automáticas (WhatsApp API); área do divulgador com
+  autoatendimento das vendas dele
+- Múltiplos sorteios simultâneos no ar — modelo suporta, UX valida 1 ativo
 
-## 3. Regras de negócio propostas
+## 3. Regras de negócio
 
-- **R1.** Toda rifa pertence a um `departamento_id` e é criada por
-  admin/secretaria ou pelo **líder do departamento** (D5-scope: líder só
-  gerencia rifas do seu depto).
-- **R2.** Bilhete = `{rifa_id, numero}` sequencial; reserva pública exige
-  `nome` + `telefone`; limite `max_por_pessoa` (padrão 10) e
-  `total_numeros` fecham o universo do sorteio (ex.: 200 números).
-- **R3.** Só bilhetes `pago` (ou `gratuito` — concessões internas) entram
-  na apuração; `pendente` é reserva que pode expirar/liberar o número.
-- **R4.** Após `data_sorteio` as reservas públicas são bloqueadas
-  ("Vendas encerradas"), mesmo que o status ainda seja `ativo`.
-- **R5.** Uma vez `sorteado`, a rifa é imutável (resultado público).
-  `cancelado` exige motivo e libera números; bilhetes pagos ficam
-  registrados para devolução manual.
-- **R6.** Mesmo comprador não pode ganhar 2 prêmios da mesma rifa
-  (bilhete vencedor sai do pool).
-- **R7.** Resultado público exibe seed + SHA-256(seed) (sistema) ou os
-  números da Federal informados — qualquer um pode auditar.
+- **R1.** Sorteio criado por admin/secretaria; **líder de departamento**
+  pode: gerar/regenerar links dos membros do SEU depto, ver ranking do
+  depto e marcar pagos nos bilhetes vendidos pelo seu depto (escopo D5).
+- **R2.** Número = sequencial por sorteio (`UNIQUE(rifa_id,numero)`);
+  reserva exige nome+telefone; `max_por_pessoa` (padrão 50) e
+  `total_numeros` fecham o universo.
+- **R3.** Só `pago`/`gratuito` participam da apuração; `pendente` é
+  reserva aguardando PIX manual.
+- **R4.** Após `data_sorteio`, reservas públicas bloqueiam
+  ("Vendas encerradas").
+- **R5.** `sorteado` é imutável; `cancelado` exige motivo e registra
+  bilhetes pagos para devolução manual.
+- **R6.** Um mesmo bilhete não ganha 2 prêmios; comprador pode ganhar
+  prêmios diferentes com bilhetes diferentes? **Decisão D-R7.**
+- **R7.** Resultado público exibe seed + SHA-256 (sistema) ou os
+  números da Federal informados — auditável por qualquer pessoa.
+- **R8.** Link de divulgação atribui a venda no momento da RESERVA; se o
+  mesmo telefone comprar por 2 links, cada bilhete fica com o
+  divulgador do link usado.
+- **R9.** Repartição: soma dos percentuais deve ser 100% para ativar;
+  destino `departamentos` rateia proporcionalmente às vendas confirmadas
+  de cada depto participante **(D-R8: ou igualmente entre eles)**.
+- **R10.** Arrecadação de referência = Σ bilhetes `pago`+`gratuito`? —
+  **não**: somente `pago` (gratuito é concessão, não gera caixa).
+  O extrato mostra bruto (todos), pago e pendente.
 
 ## 4. Modelo de dados (migration `0009_rifas.sql`)
 
 ```sql
-rifas            id, departamento_id(FK), titulo, slug UNIQUE,
-                 descricao TEXT, regulamento TEXT, capa_url,
-                 valor_bilhete DECIMAL(10,2),
-                 total_numeros INT, max_por_pessoa INT DEFAULT 10,
-                 data_sorteio DATETIME,
-                 metodo ENUM('sistema','federal') DEFAULT 'sistema',
-                 status ENUM('rascunho','ativo','encerrado','sorteado',
-                             'cancelado') DEFAULT 'rascunho',
-                 seed, prova_hash, federal_numeros, cancelado_motivo,
-                 created_by(FK usuarios), created_at, updated_at,
-                 deleted_at
-rifa_premios     id, rifa_id(FK), ordem, titulo, descricao,
-                 valor_estimado DECIMAL(10,2), imagem_url,
-                 bilhete_vencedor_id NULL, created_at
-rifa_bilhetes    id, rifa_id(FK), numero INT, nome, telefone,
-                 email NULL, status_pag ENUM('pendente','pago','gratuito',
-                                            'falhou') DEFAULT 'pendente',
-                 pago_em, pago_por(FK usuarios), created_at,
-                 UNIQUE (rifa_id, numero),
-                 INDEX (rifa_id, telefone)
+rifas               id, titulo, slug UNIQUE, descricao, regulamento,
+                    capa_url, valor_numero DECIMAL(10,2) NOT NULL,
+                    total_numeros INT NOT NULL,
+                    max_por_pessoa INT DEFAULT 50,
+                    data_sorteio DATETIME,
+                    metodo ENUM('sistema','federal') DEFAULT 'sistema',
+                    status ENUM('rascunho','ativo','encerrado',
+                                'sorteado','cancelado')
+                                DEFAULT 'rascunho',
+                    pix_instrucoes TEXT,      -- chave/instrução PIX públicas
+                    seed, prova_hash, federal_numeros, cancelado_motivo,
+                    created_by(FK usuarios), created_at, updated_at,
+                    deleted_at
+
+rifa_premios        id, rifa_id(FK), ordem, titulo, descricao,
+                    valor_estimado DECIMAL(10,2), imagem_url,
+                    departamento_id(FK departamentos) NOT NULL,
+                    bilhete_vencedor_id NULL, created_at
+
+rifa_reparticao     id, rifa_id(FK), destino VARCHAR(120),
+                    tipo ENUM('livre','departamentos') DEFAULT 'livre',
+                    percentual DECIMAL(5,2) NOT NULL
+
+rifa_divulgadores   id, rifa_id(FK), pessoa_id(FK membros.pessoa_id),
+                    token CHAR(32) UNIQUE, ativo TINYINT DEFAULT 1,
+                    UNIQUE (rifa_id, pessoa_id), created_at
+
+rifa_bilhetes       id, rifa_id(FK), numero INT, nome, telefone,
+                    email NULL,
+                    status_pag ENUM('pendente','pago','gratuito',
+                                    'falhou') DEFAULT 'pendente',
+                    divulgador_id NULL (FK rifa_divulgadores),
+                    pago_em, pago_por(FK usuarios), created_at,
+                    UNIQUE (rifa_id, numero),
+                    INDEX (rifa_id, telefone),
+                    INDEX (rifa_id, divulgador_id)
 ```
 
-View pública `v_rifas_publicas`: só `status IN ('ativo','encerrado',
-'sorteado')`, sem dados de contato dos compradores.
+Views: `v_rifas_publicas` (status ativo/encerrado/sorteado — sem dados de
+contato) e `v_rifa_vendas` (totais por sorteio/membro/depto p/ ranking).
 
 ## 5. Rotas (contrato — detalhar em `06-api`)
 
-**Autenticadas** (`/api/rifas…`, escrita: admin/secretaria; líder só nas
-do seu depto):
+**Autenticadas** (`/api/rifas…`; escrita admin/secretaria; líder escopado
+ao próprio depto onde marcado):
 - `GET/POST /rifas`, `GET/PUT /rifas/{id}`, `DELETE` (soft, só rascunho)
-- `POST /rifas/{id}/ativar` (valida prêmio+regulamento → 422)
-- `POST /rifas/{id}/encerrar`, `/cancelar` `{motivo}`
-- `POST /rifas/{id}/sortear` `{seed? | federal_numeros}` → prova
-- `POST/PUT/DELETE /rifas/{id}/premios[/{pid}]`
-- `GET /rifas/{id}/bilhetes?q=&status_pag=` , `POST` (venda manual/balcão),
-  `PATCH /rifas/{id}/bilhetes/{bid}/pagar`, `/estornar`
-- `POST/DELETE /rifas/{id}/capa`, `POST/DELETE
-  /rifas/{id}/premios/{pid}/imagem` (multipart `arquivo`, ≤2MB)
+- `POST /rifas/{id}/ativar|encerrar|cancelar|sortear` `{seed?|federal_numeros}`
+- `POST/PUT/DELETE /rifas/{id}/premios[/{pid}]` — prêmio exige `departamento_id`
+- `PUT /rifas/{id}/reparticao` `[{destino,tipo,percentual}…]` (replace-all, valida Σ=100)
+- `GET/POST /rifas/{id}/divulgadores` `{pessoa_id}` — só membro ativo de
+  depto que doa prêmio **(D-R9: ou qualquer membro? quem divulga?)**;
+  `DELETE /rifas/{id}/divulgadores/{did}` desativa
+- `GET /rifas/{id}/bilhetes?q=&status_pag=&depto=&divulgador=`,
+  `POST` (venda balcão), `PATCH .../{bid}/pagar`, `/estornar`
+- `GET /rifas/{id}/ranking` — vendas por membro e por depto
+- `GET /rifas/{id}/reparticao-extrato` — arrecadado × %, rateio por depto
+- `POST/DELETE /rifas/{id}/capa`, `premios/{pid}/imagem` (≤2MB)
 
-**Públicas** (`/api/public/rifas…`, sem auth):
-- `GET /public/rifas` — rifas ativas (lista no site)
-- `GET /public/rifas/{slug}` — rifa + prêmios + contadores + resultado
-- `POST /public/rifas/{slug}/reservar` `{nome, telefone, quantidade}` →
-  aloca números (transação + lock na rifa) — respeita R2/R4, anti-flood
-  por IP/telefone (janela na tabela)
-- `GET /public/rifas/{slug}/bilhetes?telefone=` — consulta próprios
-  bilhetes + se é vencedor
+**Públicas** (`/api/public/sorteios…`, sem auth):
+- `GET /public/sorteios` — ativos (seção/menu do site)
+- `GET /public/sorteios/{slug}` — sorteio+prêmios+contadores+resultado;
+  aceita `?v={token}` no retorno para o frontend exibir "você está
+  comprando pelo link de {nome do membro}" **(D-R10: mostrar ou não o
+  nome do divulgador publicamente?)**
+- `POST /public/sorteios/{slug}/reservar` `{nome, telefone, quantidade,
+  v?}` — aloca N números em transação (`FOR UPDATE`), respeita R2/R4/R8,
+  anti-flood por IP+telefone
+- `GET /public/sorteios/{slug}/bilhetes?telefone=` — só números+status
+  (sem nome — LGPD)
 
 ## 6. Frontend
 
-- `RifasPage` admin: lista por depto, modal criar/editar (nome, valor,
-  total de números, data, método, regulamento, capa `ImagemUpload`),
-  detalhe com abas **Prêmios / Bilhetes / Resultado**; ações de ciclo de
-  vida com confirmação; botão "Sortear" com input de seed opcional ou
-  números da Federal
-- Rota pública SPA `/rifa/:slug` (sem AdminLayout): hero com capa,
-  prêmios, form de reserva (máscara telefone já existe em
-  `lib/mascaras.ts`), "Meus bilhetes" por telefone, seção Resultado com
-  prova SHA-256
-- Item no menu do site público ("Rifas") quando houver rifa ativa —
-  via `GET /public/rifas`
+- `RifasPage` admin (`/admin/rifas`): lista, modal criar/editar; detalhe
+  com abas **Prêmios / Repartição / Divulgadores / Bilhetes / Ranking /
+  Resultado**; ações do ciclo com confirmação; link público copiável;
+  por divulgador, botão "copiar link" `/sorteio/{slug}?v={token}`
+- Rota SPA pública `/sorteio/:slug` (sem AdminLayout): capa, propósito,
+  prêmios (com depto), form com `quantidade`, exibe chave PIX após
+  reserva, consulta "meus números", resultado + prova
+- Preservar `?v=` do URL no POST de reserva; se token inválido/inativo →
+  reserva segue sem divulgador (não bloqueia a venda)
+- Máscara de telefone (`lib/mascaras.ts`) e `ImagemUpload` reutilizados
 
 ## 7. Algoritmo de apuração (portado do Conectados)
 
-**sistema:** `seed = seed_info ? : bin2hex(random_bytes(32))`; para cada
-prêmio i: `h = hash('sha256', "$seed:$premioId:$i")`; índice =
+**sistema:** `seed = informada ? : bin2hex(random_bytes(32))`; por prêmio
+i: `h = hash('sha256', "$seed:$premioId:$i")`, índice
 `hexdec(substr($h,0,15)) % total_elegiveis`; vencedor sai do pool;
-`prova_hash = hash('sha256', $seed)`.
+`prova_hash = sha256($seed)` público.
 
-**federal:** `federal_numeros` informados na ordem dos prêmios; extrai os
-últimos N dígitos (N = dígitos de `total_numeros`); percorre a lista até
-cair em bilhete elegível; fallback `(ultimo + posicao) % elegiveis`;
-seed registrada `federal:{numeros}`.
+**federal:** `federal_numeros` na ordem dos prêmios; últimos N dígitos
+(N = dígitos de `total_numeros`); percorre até bilhete elegível;
+fallback `(ultimo+posicao) % elegiveis`; seed `federal:{numeros}`.
 
-Ambos em `RifaRepository::sortear()` dentro de transação; testes de
-integração cobrem determinismo (mesma seed → mesmo vencedor) e regras de
-pool.
+`RifaRepository::sortear()` em transação; testes cobrem determinismo e
+pool (sem bilhete repetido vencedor, pendente nunca vence).
 
-## 8. Decisões pendentes (responder antes de codar)
+## 8. Decisões pendentes
 
-- **D-R1.** Confirmação de pagamento manual basta (PIX direto na conta
-  da igreja/depto)? *Sem gateway — presunção: sim.*
-- **D-R2.** Quem marca "pago": só admin/secretaria, ou líder do depto
-  também? *Presunção: líder também (D5).*
-- **D-R3.** Reserva sem pagamento em X horas libera o número?
-  *Presunção: manual, sem expiração automática no MVP.*
-- **D-R4.** Rifa gratuita (arrecadação zero, só participação) entra no
-  MVP? *Presunção: não.*
-- **D-R5.** Bilhete pode ser escolhido pelo comprador (número da sorte)
-  ou só atribuição sequencial? *Presunção: sequencial no MVP.*
-- **D-R6.** Precisa de PIX copia-e-cola/chave exibida na página de
-  reserva? *Presunção: sim, texto configurável por rifa
-  (`pix_instrucoes`).*
+- **D-R7.** Mesmo comprador pode ganhar prêmios distintos com bilhetes
+  distintos? *Presunção: sim (multiprêmios incentiva comprar mais).*
+- **D-R8.** Destino "Departamentos 30%": rateia proporcional às vendas
+  do depto ou igualmente entre participantes? *Presunção: proporcional
+  (incentiva a divulgação — era a ideia do link exclusivo).*
+- **D-R9.** Quem pode ser divulgador: só membros de deptos doadores de
+  prêmio, ou qualquer membro? *Presunção: qualquer membro ativo; o depto
+  do divulgador recebe o crédito da venda.*
+- **D-R10.** A página pública exibe o nome do divulgador no link
+  ("comprando com Kátia")? *Presunção: sim, ajuda a confirmação de
+  vendas — ocultável se preferir anonimato.*
+- **D-R11.** Reserva pendente expira (libera número após Xh sem PIX)?
+  *Presunção: não no MVP — liberação manual por estorno.*
+- **D-R12.** Número escolhido pelo comprador ou só sequencial?
+  *Presunção: sequencial no MVP.*
 
 ## 9. Riscos
 
-- **LGPD:** telefone/nome de público externo — consulta por telefone
-  expõe bilhetes de qualquer um que saiba o número; mitigar mostrando só
-  números+status (sem nome completo) e limitar tentativas.
-- **Legal:** rifa beneficente por igreja é permitida, mas o regulamento
-  público é obrigatório — bloqueio na ativação é obrigatório, não
-  opcional.
-- **Anti-fraude:** reservas públicas em massa — rate-limit simples por
-  IP + telefone + limite por pessoa.
-- **Concorrência:** dois compradores pegando o mesmo número —
-  `UNIQUE(rifa_id,numero)` + transação com `SELECT ... FOR UPDATE` no
-  contador.
+- **LGPD:** consulta por telefone mostra só números+status; nomes de
+  compradores e divulgadores só em área autenticada (divulgador aparece
+  só como primeiro nome no link público, se D-R10=sim).
+- **Legal:** regulamento público obrigatório p/ ativar (Lei 5.768/1971);
+  incluir finalidade beneficente + repartição no texto.
+- **Anti-fraude:** token de divulgador não confere nenhum benefício ao
+  divulgador além de métrica — reservas falsas em massa ainda são risco;
+  anti-flood IP+telefone + limite por pessoa.
+- **Concorrência:** `UNIQUE(rifa_id,numero)` + `SELECT ... FOR UPDATE`
+  no cursor de alocação.
+- **Prestação de contas:** o extrato de repartição é o artefato de
+  auditoria — gerar snapshot no `sorteado`/`encerrado`.
 
 ## 10. Plano incremental
 
-1. **M7.1** Migration + `RifaRepository` + CRUD admin + ciclo de vida +
-   testes de integração
-2. **M7.2** Prêmios + capa/imagens (reuso de `Api\Uploads`)
-3. **M7.3** Reserva pública + consulta de bilhetes + página `/rifa/:slug`
-4. **M7.4** Painel de bilhetes (busca, pagar/estornar, link wa.me)
-5. **M7.5** Sortear (sistema + federal) + resultado público + prova
+1. **M7.1** Migration + `RifaRepository` + CRUD + ciclo de vida + repartição (Σ=100) + testes
+2. **M7.2** Prêmios c/ depto doador + imagens (`Api\Uploads`)
+3. **M7.3** Reserva pública (com `?v=` divulgador) + consulta + `/sorteio/:slug`
+4. **M7.4** Bilhetes: busca, pagar/estornar, ranking por membro/depto, extrato de repartição
+5. **M7.5** Sortear (sistema+federal) + resultado público + prova + snapshot de prestação de contas
 6. **M7.6** Docs, diagrama `rifas.mmd`, checklist, QA em prod
 
 ## 11. Critérios de aceite
 
-- Líder de depto só edita rifas do seu depto (teste de autorização 403)
-- Ativação sem prêmio ou sem regulamento → 422 com mensagem clara
-- Reserva pública: 2 requests simultâneos nunca pegam o mesmo número
-- Sorteio com seed fixa reproduz o mesmo resultado (teste)
-- Bilhete `pendente` nunca vence; vencedor só entre `pago`/`gratuito`
-- Resultado público mostra prova e (federal) os números informados
-- Página pública responsiva, pt-BR, máscara de telefone aplicada
+- Líder só vê/marca bilhetes e divulgadores do próprio depto (403 fora)
+- Ativar sem prêmio, sem regulamento ou repartição ≠100% → 422 claro
+- Reserva simultânea nunca duplica número; `?v=` inválido não bloqueia
+- Ranking: venda via link conta 1 para o membro E para o depto dele
+- Extrato: R$ X arrecadado → cada destino mostra X×% e, se
+  departamentos, o valor por depto proporcional às vendas
+- Seed fixa reproduz resultado; pendente nunca vence; prova pública ok
+- Página pública responsiva, pt-BR, máscara de telefone, PIX exibido

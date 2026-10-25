@@ -114,17 +114,19 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 - [ ] Deploy produção + treinamento da secretaria/EBD
 - [ ] Migração de dados existentes (se houver)
 
-## Fase 9 — M7 Rifas Beneficentes (planejado — doc 13)
+## Fase 9 — M7 Sorteios Beneficentes (planejado — doc 13)
 
-- [ ] Migration `0009`: `rifas`, `rifa_premios`, `rifa_bilhetes` +
-      `v_rifas_publicas`
-- [ ] CRUD admin + ciclo `rascunho→ativo→encerrado→sorteado` (ativação
-      exige ≥1 prêmio + regulamento — Lei 5.768/1971)
-- [ ] Reserva pública `/rifa/{slug}` (nome+telefone, números sequenciais,
-      anti-duplicidade transacional) + consulta por telefone
-- [ ] Apuração `sistema` (seed+SHA-256 prova) e `federal` — mesma
-      regra do Conectados
-- [ ] Painel de bilhetes (pagar/estornar manual, link wa.me de cobrança)
+Cenário: sorteio multiprêmios — cada depto doa 1 prêmio (R$100–200),
+links de divulgação por membro, repartição % da arrecadação.
+- [ ] Migration `0009`: `rifas`, `rifa_premios` (depto doador),
+      `rifa_reparticao`, `rifa_divulgadores`, `rifa_bilhetes` (+views)
+- [ ] CRUD + ciclo `rascunho→ativo→encerrado→sorteado`; ativação exige
+      prêmio + regulamento + repartição Σ=100% (Lei 5.768/1971)
+- [ ] Reserva pública `/sorteio/{slug}` com `?v={token}` de divulgador +
+      consulta por telefone
+- [ ] Painel: bilhetes, ranking vendas por membro/depto, extrato de
+      repartição (arrecadado × %)
+- [ ] Apuração `sistema` (seed+SHA-256) e `federal` — regra do Conectados
 
 ## Backlog futuro
 
