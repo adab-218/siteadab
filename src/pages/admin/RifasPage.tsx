@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Field from '../../components/ui/Field';
+import ImagemUpload from '../../components/ui/ImagemUpload';
 import {
   ApiError,
   departamentosApi,
@@ -76,6 +77,7 @@ const RifasPage: React.FC = () => {
 
   const [modalForm, setModalForm] = useState<null | { id?: number }>(null);
   const [form, setForm] = useState<RifaPayload>(RIFA_VAZIA);
+  const [capaUrl, setCapaUrl] = useState<string | null>(null);
   const [erroForm, setErroForm] = useState('');
   const [salvando, setSalvando] = useState(false);
 
@@ -219,7 +221,7 @@ const RifasPage: React.FC = () => {
         </h1>
         {podeEditar && (
           <button
-            onClick={() => { setForm(RIFA_VAZIA); setErroForm(''); setModalForm({}); }}
+            onClick={() => { setForm(RIFA_VAZIA); setCapaUrl(null); setErroForm(''); setModalForm({}); }}
             className="bg-red-700 text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-red-800 flex items-center gap-2"
           >
             <Plus size={16} aria-hidden="true" /> Novo sorteio
@@ -278,7 +280,7 @@ const RifasPage: React.FC = () => {
                   </a>
                   {podeEditar && r.status === 'rascunho' && (
                     <>
-                      <button onClick={() => { setForm({ ...r, descricao: r.descricao ?? '', regulamento: r.regulamento ?? '', pix_instrucoes: r.pix_instrucoes ?? '', data_sorteio: r.data_sorteio?.replace(' ', 'T').slice(0, 16) ?? '' }); setErroForm(''); setModalForm({ id: r.id }); }} className="text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 inline-flex items-center gap-1">
+                      <button onClick={() => { setForm({ ...r, descricao: r.descricao ?? '', regulamento: r.regulamento ?? '', pix_instrucoes: r.pix_instrucoes ?? '', data_sorteio: r.data_sorteio?.replace(' ', 'T').slice(0, 16) ?? '' }); setCapaUrl(r.capa_url); setErroForm(''); setModalForm({ id: r.id }); }} className="text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 inline-flex items-center gap-1">
                         <Pencil size={12} aria-hidden="true" /> Editar
                       </button>
                       <button onClick={() => setConfirm({ acao: 'ativar', rifa: r })} className="text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded px-2 py-1 inline-flex items-center gap-1">
@@ -369,6 +371,17 @@ const RifasPage: React.FC = () => {
                         placeholder="Ex.: Chave PIX: pix@adab.teo.br — envie o comprovante pelo WhatsApp (91) 9xxxx-xxxx"
                         className="w-full border rounded-lg px-3 py-2" />
             </div>
+            {modalForm.id ? (
+              <ImagemUpload
+                url={capaUrl}
+                rotulo="Capa do sorteio (página pública)"
+                formato="banner"
+                enviar={async (f) => { const r = await rifasApi.enviarCapa(modalForm.id!, f); setCapaUrl(r.capa_url); carregar(); }}
+                remover={async () => { await rifasApi.removerCapa(modalForm.id!); setCapaUrl(null); carregar(); }}
+              />
+            ) : (
+              <p className="text-xs text-gray-500">A capa pode ser enviada após salvar o sorteio.</p>
+            )}
             {erroForm && <p role="alert" className="text-sm text-red-700">{erroForm}</p>}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setModalForm(null)} className="px-4 py-2 text-sm border rounded-lg">Cancelar</button>
@@ -545,17 +558,26 @@ const AbaPremios: React.FC<DetalheProps> = ({ detalhe, deptos, podeEditar, onCha
     <div className="space-y-3">
       <ul className="space-y-2">
         {detalhe.premios.map((p) => (
-          <li key={p.id} className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm">
-            <div>
-              <span className="font-medium">{p.ordem}º — {p.titulo}</span>
-              <span className="text-gray-500"> · doado por {p.departamento_nome}</span>
-              {p.valor_estimado !== null && <span className="text-green-700"> · {moeda(Number(p.valor_estimado))}</span>}
-              {p.bilhete_vencedor_numero && <span className="ml-2 text-amber-700 font-semibold">🏆 #{p.bilhete_vencedor_numero}</span>}
+          <li key={p.id} className="flex items-center justify-between gap-3 border rounded-lg px-3 py-2 text-sm">
+            <div className="flex items-center gap-3 min-w-0">
+              <ImagemPremioInput
+                premio={p}
+                rifaId={detalhe.id}
+                podeEditar={podeEditar && !imutavel}
+                onChange={onChange}
+                onErro={onErro}
+              />
+              <div className="min-w-0">
+                <span className="font-medium">{p.ordem}º — {p.titulo}</span>
+                <span className="text-gray-500"> · doado por {p.departamento_nome}</span>
+                {p.valor_estimado !== null && <span className="text-green-700"> · {moeda(Number(p.valor_estimado))}</span>}
+                {p.bilhete_vencedor_numero && <span className="ml-2 text-amber-700 font-semibold">🏆 #{p.bilhete_vencedor_numero}</span>}
+              </div>
             </div>
             {podeEditar && !imutavel && (
               <button
                 onClick={async () => { await rifasApi.removerPremio(detalhe.id, p.id); onChange(); }}
-                className="text-red-600 hover:text-red-800" aria-label={`Remover prêmio ${p.titulo}`}
+                className="shrink-0 text-red-600 hover:text-red-800" aria-label={`Remover prêmio ${p.titulo}`}
               >
                 <Trash2 size={15} aria-hidden="true" />
               </button>
@@ -587,6 +609,71 @@ const AbaPremios: React.FC<DetalheProps> = ({ detalhe, deptos, podeEditar, onCha
           </button>
         </form>
       )}
+    </div>
+  );
+};
+
+// Mini-upload de imagem do prêmio (valida tipo/tamanho como ImagemUpload).
+const ImagemPremioInput: React.FC<{
+  premio: { id: number; titulo: string; imagem_url: string | null };
+  rifaId: number;
+  podeEditar: boolean;
+  onChange: () => void;
+  onErro: (m: string) => void;
+}> = ({ premio, rifaId, podeEditar, onChange, onErro }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  const enviar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = e.target.files?.[0];
+    e.target.value = '';
+    if (!arquivo) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(arquivo.type)) {
+      onErro('Imagem do prêmio: use JPG, PNG ou WebP.');
+      return;
+    }
+    if (arquivo.size > 2 * 1024 * 1024) {
+      onErro('Imagem do prêmio excede 2 MB.');
+      return;
+    }
+    setEnviando(true);
+    try {
+      await rifasApi.enviarImagemPremio(rifaId, premio.id, arquivo);
+      onChange();
+    } catch (err) {
+      onErro(err instanceof ApiError ? err.message : 'Falha no upload.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div className="shrink-0 flex flex-col items-center gap-1">
+      <button
+        type="button"
+        onClick={() => podeEditar && inputRef.current?.click()}
+        disabled={!podeEditar || enviando}
+        aria-label={podeEditar ? `Imagem do prêmio ${premio.titulo}` : `Imagem do prêmio ${premio.titulo}`}
+        className="w-14 h-14 rounded-lg border bg-gray-100 overflow-hidden flex items-center justify-center text-gray-400 hover:border-red-300 disabled:opacity-70"
+      >
+        {enviando ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : premio.imagem_url ? (
+          <img src={premio.imagem_url} alt={premio.titulo} className="w-full h-full object-cover" />
+        ) : (
+          <Gift size={18} aria-hidden="true" />
+        )}
+      </button>
+      {premio.imagem_url && podeEditar && (
+        <button
+          type="button"
+          onClick={async () => { await rifasApi.removerImagemPremio(rifaId, premio.id); onChange(); }}
+          className="text-[10px] text-red-600 hover:underline"
+        >
+          remover
+        </button>
+      )}
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={enviar} className="sr-only" />
     </div>
   );
 };

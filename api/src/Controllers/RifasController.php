@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Adab\Api\Controllers;
 
 use Adab\Api\Json;
+use Adab\Api\Uploads;
 use Adab\Api\Validacao;
 use Adab\Api\Repositories\DepartamentoRepository;
 use Adab\Api\Repositories\RifaRepository;
@@ -25,12 +26,14 @@ final class RifasController
     private RifaRepository $rifas;
     private DepartamentoRepository $deptos;
     private UsuarioRepository $usuarios;
+    private Uploads $uploads;
 
-    public function __construct(PDO $pdo)
+    public function __construct(PDO $pdo, string $uploadsDir)
     {
         $this->rifas = new RifaRepository($pdo);
         $this->deptos = new DepartamentoRepository($pdo);
         $this->usuarios = new UsuarioRepository($pdo);
+        $this->uploads = new Uploads($uploadsDir);
     }
 
     private function uid(): ?int
@@ -245,6 +248,74 @@ final class RifasController
         }
         $this->rifas->salvarReparticao($rifaId, $ok);
         return Json::resposta($response, ['data' => $this->rifas->listarReparticao($rifaId)]);
+    }
+
+    // ==================== imagens ====================
+
+    /** POST /rifas/{id}/capa — multipart "arquivo" (JPG/PNG/WebP ≤2MB). */
+    public function capa(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $rifa = $this->rifas->buscar($id);
+        if (!$rifa) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Rifa não encontrada.', 404);
+        }
+        $arquivo = ($request->getUploadedFiles())['arquivo'] ?? null;
+        if (!$arquivo) {
+            return Json::erro($response, 'VALIDACAO', 'Envie a imagem no campo "arquivo".', 400);
+        }
+        try {
+            $url = $this->uploads->salvarImagem($arquivo, 'rifas', "rifa_{$id}");
+        } catch (\RuntimeException $e) {
+            return Json::erro($response, $e->getMessage(), Uploads::mensagem($e->getMessage()), 400);
+        }
+        $this->uploads->remover($rifa['capa_url']);
+        $this->rifas->atualizar($id, ['capa_url' => $url]);
+        return Json::resposta($response, ['data' => $this->rifas->buscar($id)]);
+    }
+
+    public function removerCapa(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $rifa = $this->rifas->buscar($id);
+        if (!$rifa) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Rifa não encontrada.', 404);
+        }
+        $this->uploads->remover($rifa['capa_url']);
+        $this->rifas->atualizar($id, ['capa_url' => null]);
+        return Json::resposta($response, ['data' => $this->rifas->buscar($id)]);
+    }
+
+    /** POST /rifas/{id}/premios/{premioId}/imagem — multipart "arquivo". */
+    public function imagemPremio(Request $request, Response $response, array $args): Response
+    {
+        $premio = $this->rifas->buscarPremio((int) $args['premioId']);
+        if (!$premio || (int) $premio['rifa_id'] !== (int) $args['id']) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Prêmio não encontrado.', 404);
+        }
+        $arquivo = ($request->getUploadedFiles())['arquivo'] ?? null;
+        if (!$arquivo) {
+            return Json::erro($response, 'VALIDACAO', 'Envie a imagem no campo "arquivo".', 400);
+        }
+        try {
+            $url = $this->uploads->salvarImagem($arquivo, 'rifas', "premio_{$premio['id']}");
+        } catch (\RuntimeException $e) {
+            return Json::erro($response, $e->getMessage(), Uploads::mensagem($e->getMessage()), 400);
+        }
+        $this->uploads->remover($premio['imagem_url']);
+        $this->rifas->atualizarPremio((int) $premio['id'], ['imagem_url' => $url]);
+        return Json::resposta($response, ['data' => $this->rifas->buscarPremio((int) $premio['id'])]);
+    }
+
+    public function removerImagemPremio(Request $request, Response $response, array $args): Response
+    {
+        $premio = $this->rifas->buscarPremio((int) $args['premioId']);
+        if (!$premio || (int) $premio['rifa_id'] !== (int) $args['id']) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Prêmio não encontrado.', 404);
+        }
+        $this->uploads->remover($premio['imagem_url']);
+        $this->rifas->atualizarPremio((int) $premio['id'], ['imagem_url' => null]);
+        return Json::resposta($response, ['data' => $this->rifas->buscarPremio((int) $premio['id'])]);
     }
 
     // ==================== divulgadores ====================

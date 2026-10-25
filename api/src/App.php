@@ -71,7 +71,7 @@ function criarApp(PDO $pdo, array $config): App
     // GETs são abertos a todo perfil autenticado (lider_departamento tem
     // escopo aplicado dentro do controller — regra D5); escritas exigem
     // PerfilMiddleware explícito.
-    $app->group('', function (RouteCollectorProxy $g) use ($pdo) {
+    $app->group('', function (RouteCollectorProxy $g) use ($pdo, $config) {
         $g->get('/cargos', [new CatalogosController($pdo), 'cargos']);
 
         $membros = new MembrosController($pdo, (string) ($config['uploads_dir'] ?? ''));
@@ -231,7 +231,7 @@ function criarApp(PDO $pdo, array $config): App
         });
 
         // M7 Sorteios beneficentes (doc 13). Escritas: secretaria/admin.
-        $rifas = new RifasController($pdo);
+        $rifas = new RifasController($pdo, (string) ($config['uploads_dir'] ?? ''));
         $g->group('/rifas', function (RouteCollectorProxy $r) use ($rifas) {
             $r->get('', [$rifas, 'listar']);
             $r->post('', [$rifas, 'criar'])
@@ -259,6 +259,15 @@ function criarApp(PDO $pdo, array $config): App
               ->add(PerfilMiddleware::para(['secretaria']));
             // repartição percentual
             $r->put('/{id}/reparticao', [$rifas, 'salvarReparticao'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            // imagens: capa do sorteio + imagem do prêmio (multipart "arquivo")
+            $r->post('/{id}/capa', [$rifas, 'capa'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->delete('/{id}/capa', [$rifas, 'removerCapa'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->post('/{id}/premios/{premioId}/imagem', [$rifas, 'imagemPremio'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->delete('/{id}/premios/{premioId}/imagem', [$rifas, 'removerImagemPremio'])
               ->add(PerfilMiddleware::para(['secretaria']));
             // links de divulgação por membro
             $r->get('/{id}/divulgadores', [$rifas, 'listarDivulgadores']);

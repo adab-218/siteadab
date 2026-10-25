@@ -908,6 +908,14 @@ export const rifasApi = {
     apiFetch<RifaBilhete>(`/rifas/${id}/bilhetes/${bilheteId}/estornar`, { method: 'PATCH' }),
   ranking: (id: number) => apiFetch<RifaRankingItem[]>(`/rifas/${id}/ranking`),
   extrato: (id: number) => apiFetch<RifaExtrato>(`/rifas/${id}/reparticao-extrato`),
+  enviarCapa: (id: number, arquivo: File) =>
+    apiUpload<Rifa>(`/rifas/${id}/capa`, arquivo),
+  removerCapa: (id: number) =>
+    apiFetch<Rifa>(`/rifas/${id}/capa`, { method: 'DELETE' }),
+  enviarImagemPremio: (id: number, premioId: number, arquivo: File) =>
+    apiUpload<RifaPremio>(`/rifas/${id}/premios/${premioId}/imagem`, arquivo),
+  removerImagemPremio: (id: number, premioId: number) =>
+    apiFetch<RifaPremio>(`/rifas/${id}/premios/${premioId}/imagem`, { method: 'DELETE' }),
 };
 
 // ---- público (sem auth) ----

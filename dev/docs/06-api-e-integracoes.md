@@ -180,6 +180,8 @@ pontual/transferida em qualquer data (nº sequencial seguinte).
 | POST/PUT/DELETE | `/api/rifas/{id}/premios[/{pid}]` — depto doador | secretaria, admin | ✅ |
 | PUT | `/api/rifas/{id}/reparticao` `{linhas[]}` — Σ=100 | secretaria, admin | ✅ |
 | GET/POST/DELETE | `/api/rifas/{id}/divulgadores[/{did}]` — token por membro | leitura autenticado; escrita secretaria, admin, lider_departamento | ✅ |
+| POST/DELETE | `/api/rifas/{id}/capa` — multipart `arquivo`, ≤2MB | secretaria, admin | ✅ |
+| POST/DELETE | `/api/rifas/{id}/premios/{pid}/imagem` — multipart `arquivo` | secretaria, admin | ✅ |
 | GET | `/api/rifas/{id}/bilhetes?q=&status_pag=&depto=&divulgador=` | autenticado | ✅ |
 | PATCH | `/api/rifas/{id}/bilhetes/{bid}/pagar` `/estornar` | secretaria, admin | ✅ |
 | GET | `/api/rifas/{id}/ranking` — vendas por membro/depto | autenticado | ✅ |

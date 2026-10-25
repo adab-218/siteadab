@@ -146,10 +146,10 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       migration 0009 + `v_rifas_publicas`; `RifasPage` com abas
       prêmios/repartição/divulgadores/bilhetes/ranking/extrato;
       página pública `/sorteio/:slug`; `RifasIntegrationTest` ✅ CI).
-      Pendente: upload de capa/imagem de prêmio (`rifas.capa_url`,
-      `rifa_premios.imagem_url` já existem no schema), autorização
-      por escopo do líder na UI (líder gera links mas ainda não filtra
-      por depto no backend)
+      Upload de capa/imagem de prêmio ✅ (`POST/DELETE /rifas/{id}/capa`,
+      `/premios/{pid}/imagem`, multipart via `Api\Uploads` em `uploads/rifas/`).
+      Pendente: escopo do líder_departamento no backend (líder gera
+      links de qualquer membro — refinar para só o seu depto)
 
 ## DECISÕES — pendentes do cliente (bloqueiam partes do T2)
 
