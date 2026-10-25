@@ -14,6 +14,7 @@ use Adab\Api\Controllers\EbdController;
 use Adab\Api\Controllers\EventosController;
 use Adab\Api\Controllers\MembrosController;
 use Adab\Api\Controllers\PublicController;
+use Adab\Api\Controllers\RifasController;
 use Adab\Api\Controllers\UsuariosController;
 use Adab\Api\Middleware\AuthMiddleware;
 use Adab\Api\Middleware\CsrfMiddleware;
@@ -52,6 +53,11 @@ function criarApp(PDO $pdo, array $config): App
         $pub = new PublicController($pdo);
         $g->get('/programacao', [$pub, 'programacao']);
         $g->get('/eventos', [$pub, 'eventos']);
+        // M7 Sorteios beneficentes (doc 13): reserva pública por slug
+        $g->get('/sorteios', [$pub, 'sorteios']);
+        $g->get('/sorteios/{slug}', [$pub, 'sorteio']);
+        $g->post('/sorteios/{slug}/reservar', [$pub, 'reservar']);
+        $g->get('/sorteios/{slug}/bilhetes', [$pub, 'meusBilhetes']);
     });
 
     // Admin — POST /migrate: sessão admin OU X-Migrate-Token (deploy)
@@ -222,6 +228,52 @@ function criarApp(PDO $pdo, array $config): App
               ->add(PerfilMiddleware::para(['ebd_admin', 'dirigente']));
             $e->get('/relatorios/faltosos', [$ebd, 'relatorioFaltosos'])
               ->add(PerfilMiddleware::para(['ebd_admin']));
+        });
+
+        // M7 Sorteios beneficentes (doc 13). Escritas: secretaria/admin.
+        $rifas = new RifasController($pdo);
+        $g->group('/rifas', function (RouteCollectorProxy $r) use ($rifas) {
+            $r->get('', [$rifas, 'listar']);
+            $r->post('', [$rifas, 'criar'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->get('/{id}', [$rifas, 'ver']);
+            $r->put('/{id}', [$rifas, 'atualizar'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->delete('/{id}', [$rifas, 'remover'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            // ciclo de vida
+            $r->post('/{id}/ativar', [$rifas, 'ativar'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->post('/{id}/encerrar', [$rifas, 'encerrar'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->post('/{id}/cancelar', [$rifas, 'cancelar'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->post('/{id}/sortear', [$rifas, 'sortear'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            // prêmios (doados por departamento)
+            $r->post('/{id}/premios', [$rifas, 'criarPremio'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->put('/{id}/premios/{premioId}', [$rifas, 'atualizarPremio'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->delete('/{id}/premios/{premioId}', [$rifas, 'removerPremio'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            // repartição percentual
+            $r->put('/{id}/reparticao', [$rifas, 'salvarReparticao'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            // links de divulgação por membro
+            $r->get('/{id}/divulgadores', [$rifas, 'listarDivulgadores']);
+            $r->post('/{id}/divulgadores', [$rifas, 'criarDivulgador'])
+              ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
+            $r->delete('/{id}/divulgadores/{divulgadorId}', [$rifas, 'desativarDivulgador'])
+              ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
+            // bilhetes / caixa
+            $r->get('/{id}/bilhetes', [$rifas, 'listarBilhetes']);
+            $r->patch('/{id}/bilhetes/{bilheteId}/pagar', [$rifas, 'pagarBilhete'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->patch('/{id}/bilhetes/{bilheteId}/estornar', [$rifas, 'estornarBilhete'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->get('/{id}/ranking', [$rifas, 'ranking']);
+            $r->get('/{id}/reparticao-extrato', [$rifas, 'extrato']);
         });
 
         // Gestão de usuários — todo o grupo é só-admin (lista vazia).

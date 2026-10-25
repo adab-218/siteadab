@@ -117,15 +117,18 @@ rifa_divulgadores   id, rifa_id(FK), pessoa_id(FK membros.pessoa_id),
                     token CHAR(32) UNIQUE, ativo TINYINT DEFAULT 1,
                     UNIQUE (rifa_id, pessoa_id), created_at
 
-rifa_bilhetes       id, rifa_id(FK), numero INT, nome, telefone,
-                    email NULL,
+rifa_bilhetes       id, rifa_id(FK), numero INT NULL,
+                    nome, telefone, email NULL,
                     status_pag ENUM('pendente','pago','gratuito',
-                                    'falhou') DEFAULT 'pendente',
+                                    'expirado','falhou')
+                                    DEFAULT 'pendente',
                     divulgador_id NULL (FK rifa_divulgadores),
+                    expira_em DATETIME NULL,   -- D-R11: pendente+24h
                     pago_em, pago_por(FK usuarios), created_at,
-                    UNIQUE (rifa_id, numero),
+                    UNIQUE (rifa_id, numero),  -- expirado → numero=NULL
                     INDEX (rifa_id, telefone),
-                    INDEX (rifa_id, divulgador_id)
+                    INDEX (rifa_id, divulgador_id),
+                    INDEX (rifa_id, status_pag, expira_em)
 ```
 
 Views: `v_rifas_publicas` (status ativo/encerrado/sorteado — sem dados de
@@ -150,10 +153,8 @@ ao próprio depto onde marcado):
 
 **Públicas** (`/api/public/sorteios…`, sem auth):
 - `GET /public/sorteios` — ativos (seção/menu do site)
-- `GET /public/sorteios/{slug}` — sorteio+prêmios+contadores+resultado;
-  aceita `?v={token}` no retorno para o frontend exibir "você está
-  comprando pelo link de {nome do membro}" **(D-R10: mostrar ou não o
-  nome do divulgador publicamente?)**
+- `GET /public/sorteios/{slug}` — sorteio+prêmios+contadores+resultado
+  (D-R10: **não** expõe nome do divulgador nem dados de compradores)
 - `POST /public/sorteios/{slug}/reservar` `{nome, telefone, quantidade,
   v?}` — aloca N números em transação (`FOR UPDATE`), respeita R2/R4/R8,
   anti-flood por IP+telefone
@@ -187,23 +188,23 @@ fallback `(ultimo+posicao) % elegiveis`; seed `federal:{numeros}`.
 `RifaRepository::sortear()` em transação; testes cobrem determinismo e
 pool (sem bilhete repetido vencedor, pendente nunca vence).
 
-## 8. Decisões pendentes
+## 8. Decisões (respondidas 2026-10-25)
 
-- **D-R7.** Mesmo comprador pode ganhar prêmios distintos com bilhetes
-  distintos? *Presunção: sim (multiprêmios incentiva comprar mais).*
-- **D-R8.** Destino "Departamentos 30%": rateia proporcional às vendas
-  do depto ou igualmente entre participantes? *Presunção: proporcional
-  (incentiva a divulgação — era a ideia do link exclusivo).*
-- **D-R9.** Quem pode ser divulgador: só membros de deptos doadores de
-  prêmio, ou qualquer membro? *Presunção: qualquer membro ativo; o depto
-  do divulgador recebe o crédito da venda.*
-- **D-R10.** A página pública exibe o nome do divulgador no link
-  ("comprando com Kátia")? *Presunção: sim, ajuda a confirmação de
-  vendas — ocultável se preferir anonimato.*
-- **D-R11.** Reserva pendente expira (libera número após Xh sem PIX)?
-  *Presunção: não no MVP — liberação manual por estorno.*
-- **D-R12.** Número escolhido pelo comprador ou só sequencial?
-  *Presunção: sequencial no MVP.*
+- **D-R7.** Mesmo comprador **pode** ganhar prêmios distintos com
+  bilhetes distintos (multiprêmios incentiva comprar mais).
+- **D-R8.** Destino "Departamentos" rateia **proporcionalmente às
+  vendas** de cada depto (incentiva a divulgação pelo link).
+- **D-R9.** Divulgador pode ser **qualquer membro ativo**; o depto do
+  divulgador recebe o crédito da venda.
+- **D-R10.** Página pública **não** exibe o nome do divulgador — o link
+  `?v=` só contabiliza a venda (anonimato do vendedor no site).
+- **D-R11.** Reserva `pendente` **expira em 24h** sem pagamento: o
+  número volta a ficar disponível para outro comprador. Implementação:
+  `rifa_bilhetes.expira_em`; liberação preguiçosa (lazy) — antes de
+  alocar números, pendentes vencidos viram `expirado` e o número
+  retorna ao pool (`numero` → NULL preserva auditoria e libera a
+  UNIQUE). Não depende de cron.
+- **D-R12.** Números só **sequenciais** no MVP.
 
 ## 9. Riscos
 
