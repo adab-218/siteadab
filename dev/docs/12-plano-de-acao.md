@@ -114,9 +114,23 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 - [ ] Deploy produção + treinamento da secretaria/EBD
 - [ ] Migração de dados existentes (se houver)
 
+## Fase 9 — M7 Rifas Beneficentes (planejado — doc 13)
+
+- [ ] Migration `0009`: `rifas`, `rifa_premios`, `rifa_bilhetes` +
+      `v_rifas_publicas`
+- [ ] CRUD admin + ciclo `rascunho→ativo→encerrado→sorteado` (ativação
+      exige ≥1 prêmio + regulamento — Lei 5.768/1971)
+- [ ] Reserva pública `/rifa/{slug}` (nome+telefone, números sequenciais,
+      anti-duplicidade transacional) + consulta por telefone
+- [ ] Apuração `sistema` (seed+SHA-256 prova) e `federal` — mesma
+      regra do Conectados
+- [ ] Painel de bilhetes (pagar/estornar manual, link wa.me de cobrança)
+
 ## Backlog futuro
 
 - [ ] PWA/offline para chamada EBD
 - [ ] Módulo financeiro (dízimos/ofertas)
 - [ ] Comunicação (e-mail/WhatsApp)
 - [ ] Relatórios PDF avançados; Sentry
+- [ ] Rifas fase 2: cartões presenciais com QR, chat/live na página,
+      pagamento online (gateway)
