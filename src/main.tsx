@@ -15,6 +15,8 @@ import EventosPage from './pages/admin/EventosPage';
 import AcoesPage from './pages/admin/AcoesPage';
 import EbdPage from './pages/admin/EbdPage';
 import UsuariosPage from './pages/admin/UsuariosPage';
+import RifasPage from './pages/admin/RifasPage';
+import SorteioPage from './pages/SorteioPage';
 import VersoesPage from './pages/VersoesPage';
 import EmBrevePage from './pages/admin/EmBrevePage';
 import './index.css';
@@ -28,6 +30,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/login" element={<LoginPage />} />
           <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
           <Route path="/versoes" element={<VersoesPage />} />
+          <Route path="/sorteio/:slug" element={<SorteioPage />} />
           <Route
             path="/admin"
             element={
@@ -43,6 +46,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="eventos" element={<EventosPage />} />
             <Route path="acoes" element={<AcoesPage />} />
             <Route path="ebd" element={<EbdPage />} />
+            <Route path="rifas" element={<RifasPage />} />
             <Route path="usuarios" element={<UsuariosPage />} />
             <Route path=":modulo" element={<EmBrevePage />} />
           </Route>

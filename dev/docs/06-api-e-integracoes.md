@@ -169,11 +169,31 @@ pontual/transferida em qualquer data (nº sequencial seguinte).
 | GET | `/api/ebd/relatorios/frequencia?classe_id=&periodo_id=` | ebd_admin, admin, dirigente | ✅ |
 | GET | `/api/ebd/relatorios/faltosos?semanas=` (1–12, default 4) | ebd_admin, admin | ✅ |
 
+### M7 — Sorteios beneficentes (doc 13)
+| Método | Rota | Quem | Status |
+|--------|------|------|--------|
+| GET/POST/PUT | `/api/rifas[/{id}]` | leitura autenticado; escrita secretaria, admin | ✅ |
+| DELETE | `/api/rifas/{id}` — soft, só rascunho | secretaria, admin | ✅ |
+| POST | `/api/rifas/{id}/ativar` — exige prêmio + regulamento + repartição Σ=100 | secretaria, admin | ✅ |
+| POST | `/api/rifas/{id}/encerrar` `/cancelar{motivo}` | secretaria, admin | ✅ |
+| POST | `/api/rifas/{id}/sortear` `{seed? | federal_numeros}` | secretaria, admin | ✅ |
+| POST/PUT/DELETE | `/api/rifas/{id}/premios[/{pid}]` — depto doador | secretaria, admin | ✅ |
+| PUT | `/api/rifas/{id}/reparticao` `{linhas[]}` — Σ=100 | secretaria, admin | ✅ |
+| GET/POST/DELETE | `/api/rifas/{id}/divulgadores[/{did}]` — token por membro | leitura autenticado; escrita secretaria, admin, lider_departamento | ✅ |
+| GET | `/api/rifas/{id}/bilhetes?q=&status_pag=&depto=&divulgador=` | autenticado | ✅ |
+| PATCH | `/api/rifas/{id}/bilhetes/{bid}/pagar` `/estornar` | secretaria, admin | ✅ |
+| GET | `/api/rifas/{id}/ranking` — vendas por membro/depto | autenticado | ✅ |
+| GET | `/api/rifas/{id}/reparticao-extrato` — arrecadado × % | autenticado | ✅ |
+
 ### Público (site) — sem auth
 | Método | Rota | Conteúdo |
 |--------|------|----------|
 | GET | `/api/public/programacao` | cultos + eventos `publico` futuros |
 | GET | `/api/public/eventos` | festividades públicas |
+| GET | `/api/public/sorteios` | rifas ativas/encerradas/sorteadas (view) |
+| GET | `/api/public/sorteios/{slug}` | detalhe + prêmios + resultado (sem dados de compradores) |
+| POST | `/api/public/sorteios/{slug}/reservar` | `{nome,telefone,quantidade,v?,website?}` — números sequenciais, expira 24h |
+| GET | `/api/public/sorteios/{slug}/bilhetes?telefone=` | consulta LGPD-safe (número+status) |
 
 ### Migrations e operação
 | Método | Rota | Proteção |

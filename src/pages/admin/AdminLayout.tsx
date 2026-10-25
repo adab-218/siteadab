@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Calendar, Church, HandHeart, LayoutDashboard, LogOut, Network, ShieldCheck, Users, GraduationCap } from 'lucide-react';
+import { Calendar, Church, HandHeart, LayoutDashboard, LogOut, Network, ShieldCheck, Ticket, Users, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/admin/eventos', label: 'Eventos', icon: Calendar },
   { to: '/admin/acoes', label: 'Ações', icon: HandHeart },
   { to: '/admin/ebd', label: 'EBD', icon: GraduationCap },
+  { to: '/admin/rifas', label: 'Sorteios', icon: Ticket },
   { to: '/admin/usuarios', label: 'Usuários', icon: ShieldCheck, perfis: ['admin'] },
 ];
 

@@ -742,3 +742,210 @@ export const ebdApi = {
   relatorioFaltosos: (semanas = 4) =>
     apiFetch<EbdFaltoso[]>(`/ebd/relatorios/faltosos?semanas=${semanas}`),
 };
+
+// ---------------------------------------------------------------------
+// M7 — Sorteios beneficentes (doc 13)
+
+export type RifaStatus = 'rascunho' | 'ativo' | 'encerrado' | 'sorteado' | 'cancelado';
+export type RifaMetodo = 'sistema' | 'federal';
+export type RifaStatusPag = 'pendente' | 'pago' | 'gratuito' | 'expirado' | 'falhou';
+
+export interface Rifa {
+  id: number;
+  titulo: string;
+  slug: string;
+  descricao: string | null;
+  regulamento: string | null;
+  capa_url: string | null;
+  valor_numero: number;
+  total_numeros: number;
+  max_por_pessoa: number;
+  data_sorteio: string | null;
+  metodo: RifaMetodo;
+  status: RifaStatus;
+  pix_instrucoes: string | null;
+  seed: string | null;
+  prova_hash: string | null;
+  federal_numeros: string | null;
+  cancelado_motivo: string | null;
+  bilhetes_pagos?: number;
+  bilhetes_pendentes?: number;
+  total_premios?: number;
+}
+
+export interface RifaPremio {
+  id: number;
+  rifa_id: number;
+  ordem: number;
+  titulo: string;
+  descricao: string | null;
+  valor_estimado: number | null;
+  imagem_url: string | null;
+  departamento_id: number;
+  departamento_nome?: string;
+  bilhete_vencedor_id: number | null;
+  bilhete_vencedor_numero?: number | null;
+  vencedor_nome?: string | null;
+}
+
+export interface RifaReparticao {
+  id: number;
+  destino: string;
+  tipo: 'livre' | 'departamentos';
+  percentual: number;
+}
+
+export interface RifaDivulgador {
+  id: number;
+  pessoa_id: number;
+  nome_completo?: string;
+  token: string;
+  ativo: number;
+  vendas?: number;
+  vendas_pagas?: number;
+}
+
+export interface RifaBilhete {
+  id: number;
+  numero: number | null;
+  nome: string;
+  telefone: string;
+  email: string | null;
+  status_pag: RifaStatusPag;
+  divulgador_id: number | null;
+  divulgador_nome?: string | null;
+  departamento_nome?: string | null;
+  expira_em: string | null;
+  pago_em: string | null;
+  created_at: string;
+}
+
+export interface RifaDetalhe extends Rifa {
+  premios: RifaPremio[];
+  reparticao: RifaReparticao[];
+  divulgadores: RifaDivulgador[];
+}
+
+export interface RifaPayload {
+  titulo: string;
+  descricao?: string;
+  regulamento?: string;
+  pix_instrucoes?: string;
+  valor_numero: number;
+  total_numeros: number;
+  max_por_pessoa?: number;
+  data_sorteio?: string | null;
+  metodo?: RifaMetodo;
+}
+
+export interface RifaRankingItem {
+  divulgador_id: number;
+  nome_completo: string;
+  departamento_id: number;
+  departamento_nome: string;
+  reservas: number;
+  pagos: number;
+  pendentes: number;
+  arrecadado: number;
+}
+
+export interface RifaExtrato {
+  valor_numero: number;
+  bilhetes: Record<string, number>;
+  arrecadado: number;
+  destinos: {
+    destino: string;
+    tipo: 'livre' | 'departamentos';
+    percentual: number;
+    valor: number;
+    rateio?: { departamento_id: number; departamento_nome: string; bilhetes_pagos: number; valor: number }[];
+  }[];
+}
+
+export const rifasApi = {
+  listar: (params: { status?: string; q?: string; pagina?: number } = {}) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '') qs.set(k, String(v));
+    }
+    return apiFetch<RespostaPaginada<Rifa>>(`/rifas?${qs}`);
+  },
+  ver: (id: number) => apiFetch<RifaDetalhe>(`/rifas/${id}`),
+  criar: (p: RifaPayload) => apiFetch<Rifa>('/rifas', { method: 'POST', body: JSON.stringify(p) }),
+  atualizar: (id: number, p: Partial<RifaPayload>) =>
+    apiFetch<Rifa>(`/rifas/${id}`, { method: 'PUT', body: JSON.stringify(p) }),
+  remover: (id: number) => apiFetch<{ ok: true }>(`/rifas/${id}`, { method: 'DELETE' }),
+  ativar: (id: number) => apiFetch<Rifa>(`/rifas/${id}/ativar`, { method: 'POST' }),
+  encerrar: (id: number) => apiFetch<Rifa>(`/rifas/${id}/encerrar`, { method: 'POST' }),
+  cancelar: (id: number, motivo: string) =>
+    apiFetch<Rifa>(`/rifas/${id}/cancelar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
+  sortear: (id: number, p: { seed?: string; federal_numeros?: string }) =>
+    apiFetch<{ rifa: Rifa; resultado: { vencedores: number[]; seed: string; prova: string } }>(
+      `/rifas/${id}/sortear`, { method: 'POST', body: JSON.stringify(p) }),
+  criarPremio: (id: number, p: { ordem?: number; titulo: string; descricao?: string; valor_estimado?: number | null; departamento_id: number }) =>
+    apiFetch<RifaPremio>(`/rifas/${id}/premios`, { method: 'POST', body: JSON.stringify(p) }),
+  atualizarPremio: (id: number, premioId: number, p: Partial<RifaPremio>) =>
+    apiFetch<RifaPremio>(`/rifas/${id}/premios/${premioId}`, { method: 'PUT', body: JSON.stringify(p) }),
+  removerPremio: (id: number, premioId: number) =>
+    apiFetch<{ ok: true }>(`/rifas/${id}/premios/${premioId}`, { method: 'DELETE' }),
+  salvarReparticao: (id: number, linhas: { destino: string; tipo: 'livre' | 'departamentos'; percentual: number }[]) =>
+    apiFetch<RifaReparticao[]>(`/rifas/${id}/reparticao`, { method: 'PUT', body: JSON.stringify({ linhas }) }),
+  divulgadores: (id: number) => apiFetch<RifaDivulgador[]>(`/rifas/${id}/divulgadores`),
+  criarDivulgador: (id: number, pessoa_id: number) =>
+    apiFetch<RifaDivulgador>(`/rifas/${id}/divulgadores`, { method: 'POST', body: JSON.stringify({ pessoa_id }) }),
+  desativarDivulgador: (id: number, divulgadorId: number) =>
+    apiFetch<RifaDivulgador[]>(`/rifas/${id}/divulgadores/${divulgadorId}`, { method: 'DELETE' }),
+  bilhetes: (id: number, params: { q?: string; status_pag?: string; divulgador_id?: number; departamento_id?: number; pagina?: number } = {}) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '') qs.set(k, String(v));
+    }
+    return apiFetch<RespostaPaginada<RifaBilhete>>(`/rifas/${id}/bilhetes?${qs}`);
+  },
+  pagarBilhete: (id: number, bilheteId: number) =>
+    apiFetch<RifaBilhete>(`/rifas/${id}/bilhetes/${bilheteId}/pagar`, { method: 'PATCH' }),
+  estornarBilhete: (id: number, bilheteId: number) =>
+    apiFetch<RifaBilhete>(`/rifas/${id}/bilhetes/${bilheteId}/estornar`, { method: 'PATCH' }),
+  ranking: (id: number) => apiFetch<RifaRankingItem[]>(`/rifas/${id}/ranking`),
+  extrato: (id: number) => apiFetch<RifaExtrato>(`/rifas/${id}/reparticao-extrato`),
+};
+
+// ---- público (sem auth) ----
+
+export interface SorteioPublico {
+  slug: string;
+  titulo: string;
+  descricao: string | null;
+  capa_url: string | null;
+  valor_numero: number;
+  total_numeros: number;
+  max_por_pessoa: number;
+  data_sorteio: string | null;
+  metodo: RifaMetodo;
+  status: RifaStatus;
+  pix_instrucoes: string | null;
+  prova_hash: string | null;
+  federal_numeros: string | null;
+  numeros_reservados: number;
+  total_premios: number;
+  premios?: {
+    ordem: number;
+    titulo: string;
+    descricao: string | null;
+    valor_estimado: number | null;
+    imagem_url: string | null;
+    departamento_nome: string;
+    numero_vencedor: number | null;
+  }[];
+}
+
+export const sorteioPublicoApi = {
+  listar: () => apiFetch<SorteioPublico[]>('/public/sorteios'),
+  ver: (slug: string) => apiFetch<SorteioPublico>(`/public/sorteios/${slug}`),
+  reservar: (slug: string, p: { nome: string; telefone: string; email?: string; quantidade: number; v?: string; website?: string }) =>
+    apiFetch<{ numeros: number[]; total: number; expira_em: number }>(
+      `/public/sorteios/${slug}/reservar`, { method: 'POST', body: JSON.stringify(p) }),
+  meusBilhetes: (slug: string, telefone: string) =>
+    apiFetch<{ numero: number; status_pag: RifaStatusPag; vencedor: number }[]>(
+      `/public/sorteios/${slug}/bilhetes?telefone=${encodeURIComponent(telefone)}`),
+};

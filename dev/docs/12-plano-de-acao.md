@@ -118,15 +118,17 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 
 Cenário: sorteio multiprêmios — cada depto doa 1 prêmio (R$100–200),
 links de divulgação por membro, repartição % da arrecadação.
-- [ ] Migration `0009`: `rifas`, `rifa_premios` (depto doador),
+- [x] Migration `0009`: `rifas`, `rifa_premios` (depto doador),
       `rifa_reparticao`, `rifa_divulgadores`, `rifa_bilhetes` (+views)
-- [ ] CRUD + ciclo `rascunho→ativo→encerrado→sorteado`; ativação exige
+- [x] CRUD + ciclo `rascunho→ativo→encerrado→sorteado`; ativação exige
       prêmio + regulamento + repartição Σ=100% (Lei 5.768/1971)
-- [ ] Reserva pública `/sorteio/{slug}` com `?v={token}` de divulgador +
+- [x] Reserva pública `/sorteio/{slug}` com `?v={token}` de divulgador +
       consulta por telefone
-- [ ] Painel: bilhetes, ranking vendas por membro/depto, extrato de
+- [x] Painel: bilhetes, ranking vendas por membro/depto, extrato de
       repartição (arrecadado × %)
-- [ ] Apuração `sistema` (seed+SHA-256) e `federal` — regra do Conectados
+- [x] Apuração `sistema` (seed+SHA-256) e `federal` — regra do Conectados
+- [ ] Upload de capa/imagem de prêmio (`Api\Uploads`)
+- [ ] Escopo do líder_departamento no backend (divulgadores/bilhetes só do seu depto)
 
 ## Backlog futuro
 

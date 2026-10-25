@@ -1,0 +1,31 @@
+%% M7 Sorteios Beneficentes - 2026-10-25
+%% Fonte: api/migrations/0009_rifas.sql,
+%%        api/src/Controllers/{RifasController,PublicController}.php,
+%%        api/src/Repositories/RifaRepository.php,
+%%        src/pages/admin/RifasPage.tsx, src/pages/SorteioPage.tsx
+flowchart TD
+    subgraph ADMIN["grupo autenticado (Auth → CSRF)<br/>escrita: secretaria/admin; divulgadores: +lider_departamento"]
+        CRUD["GET/POST/PUT/DELETE /rifas<br/>(delete só em rascunho)"]
+        CICLO["POST /rifas/{id}/ativar|encerrar|cancelar|sortear"]
+        PRM["POST/PUT/DELETE /rifas/{id}/premios<br/>(departamento_id doador)"]
+        REP["PUT /rifas/{id}/reparticao<br/>(Σ=100% para ativar)"]
+        DIV["GET/POST/DELETE /rifas/{id}/divulgadores<br/>(token por membro)"]
+        BIL["GET /rifas/{id}/bilhetes<br/>PATCH .../pagar|estornar"]
+        REL["GET /rifas/{id}/ranking|reparticao-extrato"]
+    end
+
+    subgraph PUBLIC["grupo público (sem auth)"]
+        PL["GET /public/sorteios<br/>GET /public/sorteios/{slug}"]
+        RES["POST /public/sorteios/{slug}/reservar<br/>{nome,telefone,quantidade,v?}<br/>limite/pessoa + honeypot"]
+        MEU["GET /public/sorteios/{slug}/bilhetes?telefone=<br/>(LGPD: só número+status)"]
+    end
+
+    CICLO -->|"ativa: prêmio+regulamento+Σ100%"| AT["status: ativo"]
+    AT --> RES
+    RES -->|"números sequenciais<br/>transação FOR UPDATE"| PEND["bilhete pendente<br/>expira_em = +24h"]
+    PEND -->|"lazy expire"| LIB["expirado → número volta ao pool"]
+    PEND -->|"secretaria confirma PIX"| PAGO["pago → elegível ao sorteio"]
+    DIV -->|"link ?v={token}"| RES
+    CICLO -->|"sortear: sistema seed+SHA-256<br/>ou federal (últimos N dígitos)"| SOR["status: sorteado<br/>vencedores + prova pública"]
+    SOR --> MEU
+    REL -->|"arrecadado × %<br/>rateio proporcional por depto"| EXT["extrato de repartição"]

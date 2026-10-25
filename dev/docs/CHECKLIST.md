@@ -140,7 +140,16 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       extraída p/ api/src/App.php): 401 sem sessão, 403 sem CSRF,
       matriz 17 casos perfil×rota negativos, gate D3 (professor só na
       sua classe), gate D5 (líder só no seu depto), controles positivos (CI c/ MySQL service)
-- [ ] T2.6 E2E Playwright (após 1º fluxo completo)
+- [~] T2.6 E2E Playwright (após 1º fluxo completo)
+- [~] T2.7 M7 Sorteios beneficentes (doc 13) — backend + frontend prontos
+      (`RifaRepository`/`RifasController` + públicos em `PublicController`,
+      migration 0009 + `v_rifas_publicas`; `RifasPage` com abas
+      prêmios/repartição/divulgadores/bilhetes/ranking/extrato;
+      página pública `/sorteio/:slug`; `RifasIntegrationTest` ✅ CI).
+      Pendente: upload de capa/imagem de prêmio (`rifas.capa_url`,
+      `rifa_premios.imagem_url` já existem no schema), autorização
+      por escopo do líder na UI (líder gera links mas ainda não filtra
+      por depto no backend)
 
 ## DECISÕES — pendentes do cliente (bloqueiam partes do T2)
 
