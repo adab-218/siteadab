@@ -36,6 +36,7 @@ final class RifasController
 
     /** @var int[]|null|false escopo memoizado; false = ainda não calculado */
     private array|null|false $escopoCache = false;
+    private string $escopoChave = '';
 
     public function __construct(PDO $pdo, string $uploadsDir)
     {
@@ -60,12 +61,15 @@ final class RifasController
      */
     private function escopoDeptos(): ?array
     {
-        // memoizado por request (controller é recriado a cada request)
-        if ($this->escopoCache !== false) {
-            return $this->escopoCache;
-        }
         $usuario = $_SESSION['usuario'] ?? [];
         $perfil = $usuario['perfil'] ?? '';
+        // memoizado por usuário: a instância do controller vive enquanto a
+        // app viver (criarApp) — em testes/workers atende vários usuários
+        $chave = $perfil . '|' . (int) ($usuario['id'] ?? 0) . '|' . (int) ($usuario['pessoa_id'] ?? 0);
+        if ($this->escopoCache !== false && $this->escopoChave === $chave) {
+            return $this->escopoCache;
+        }
+        $this->escopoChave = $chave;
         if (in_array($perfil, ['admin', 'secretaria'], true)) {
             $escopo = null;
         } elseif ($perfil === 'lider_departamento') {

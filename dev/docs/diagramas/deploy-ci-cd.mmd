@@ -8,7 +8,7 @@ flowchart TD
     CI --> CIA["job api (PHP 8.3, pdo_mysql+pdo_sqlite):<br/>composer install → composer test (PHPUnit)"]
 
     DEP --> D1["1. Verificação completa<br/>(idêntica ao CI)"]
-    D1 --> D2["2. Composer: install + test →<br/>reinstall --no-dev (autoload otimizado)"]
+    D1 --> D2["2. Composer: install + test (MySQL 8 service,<br/>integração não é pulada) → reinstall --no-dev"]
     D2 --> D3["3. Gerar api/config.php:<br/>template + secrets via PHP var_export<br/>+ php -l (aborta se inválido)"]
     D3 --> D4["4. Montar deploy_pkg/<br/>(dist + .htaccess + api{index,.htaccess,src,vendor,migrations,config} + uploads/.htaccess)"]
     D4 --> D5["5. FTP-Deploy-Action<br/>FTPS porta 21 → server-dir /"]
