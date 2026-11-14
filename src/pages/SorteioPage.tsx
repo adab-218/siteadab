@@ -163,11 +163,10 @@ const SorteioPage: React.FC = () => {
 
       <main className="max-w-3xl mx-auto px-4 py-8 space-y-8">
         {/* estatísticas */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {[
             { label: 'Número', valor: moeda(Number(sorteio.valor_numero)) },
             { label: 'Prêmios', valor: String(sorteio.total_premios) },
-            { label: 'Máx. por pessoa', valor: String(sorteio.max_por_pessoa) },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-lg border p-3 text-center">
               <p className="text-xs text-gray-500">{s.label}</p>
