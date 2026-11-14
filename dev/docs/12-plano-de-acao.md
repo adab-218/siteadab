@@ -114,7 +114,7 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 - [ ] Headers de segurança + CSP; revisão final `.htaccess`
 - [ ] LGPD: termo de consentimento, fluxo de direitos do titular
 - [ ] `npm audit fix` + `composer audit` + dependabot
-- [ ] Cron de backup do banco + teste de restore
+- [~] Cron de backup do banco + teste de restore (script + teste automatizado prontos; agendar cron no cPanel)
 - [ ] Deploy produção + treinamento da secretaria/EBD
 - [ ] Migração de dados existentes (se houver)
 
@@ -132,7 +132,7 @@ links de divulgação por membro, repartição % da arrecadação.
       repartição (arrecadado × %)
 - [x] Apuração `sistema` (seed+SHA-256) e `federal` — regra do Conectados
 - [x] Upload de capa/imagem de prêmio (`Api\Uploads`)
-- [ ] Escopo do líder_departamento no backend (divulgadores/bilhetes só do seu depto)
+- [x] Escopo do líder_departamento no backend (divulgadores/bilhetes/pagar só do seu depto; bilhetes e tokens fechados aos demais perfis)
 
 ## Backlog futuro
 

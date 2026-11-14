@@ -114,6 +114,8 @@ rifa_reparticao     id, rifa_id(FK), destino VARCHAR(120),
                     percentual DECIMAL(5,2) NOT NULL
 
 rifa_divulgadores   id, rifa_id(FK), pessoa_id(FK membros.pessoa_id),
+                    departamento_id NULL (FK; congelado na criação do
+                    link — base do escopo D5 do líder, migration 0010),
                     token CHAR(32) UNIQUE, ativo TINYINT DEFAULT 1,
                     UNIQUE (rifa_id, pessoa_id), created_at
 

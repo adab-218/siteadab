@@ -270,15 +270,19 @@ function criarApp(PDO $pdo, array $config): App
             $r->delete('/{id}/premios/{premioId}/imagem', [$rifas, 'removerImagemPremio'])
               ->add(PerfilMiddleware::para(['secretaria']));
             // links de divulgação por membro
-            $r->get('/{id}/divulgadores', [$rifas, 'listarDivulgadores']);
+            // líder: escopo D5 no controller (só membros dos deptos que lidera)
+            $r->get('/{id}/divulgadores', [$rifas, 'listarDivulgadores'])
+              ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
             $r->post('/{id}/divulgadores', [$rifas, 'criarDivulgador'])
               ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
             $r->delete('/{id}/divulgadores/{divulgadorId}', [$rifas, 'desativarDivulgador'])
               ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
             // bilhetes / caixa
-            $r->get('/{id}/bilhetes', [$rifas, 'listarBilhetes']);
+            // bilhetes têm telefone de compradores: só secretaria/líder (escopado)
+            $r->get('/{id}/bilhetes', [$rifas, 'listarBilhetes'])
+              ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
             $r->patch('/{id}/bilhetes/{bilheteId}/pagar', [$rifas, 'pagarBilhete'])
-              ->add(PerfilMiddleware::para(['secretaria']));
+              ->add(PerfilMiddleware::para(['secretaria', 'lider_departamento']));
             $r->patch('/{id}/bilhetes/{bilheteId}/estornar', [$rifas, 'estornarBilhete'])
               ->add(PerfilMiddleware::para(['secretaria']));
             $r->get('/{id}/ranking', [$rifas, 'ranking']);

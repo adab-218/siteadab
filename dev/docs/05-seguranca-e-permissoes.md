@@ -28,7 +28,7 @@ o front nunca decide sozinho, e toda rota lista o perfil exigido.
 | `dirigente` | Pastor/dirigente: leitura geral + relatórios; edição de cultos e eventos |
 | `ebd_admin` | Gestão completa da EBD; leitura de membros |
 | `ebd_professor` | Chamada e leitura apenas das próprias classes |
-| `lider_departamento` | Leitura dos membros do seu departamento; editar ações do depto |
+| `lider_departamento` | Leitura dos membros do seu departamento; editar ações do depto; sorteios: links, bilhetes e confirmação de pagamento só do seu depto |
 
 Matriz (• = CRUD, ◦ = leitura, – = sem acesso):
 

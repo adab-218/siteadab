@@ -116,15 +116,18 @@ final class RifasIntegrationTest extends TestCase
     {
         $id = $this->novaRifa();
         $pessoa = $this->novaPessoa();
-        $dv = $this->repo->criarDivulgador($id, $pessoa);
-        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $dv['token']);
-
-        // membro no depto → venda conta no ranking dele
         $this->pdo->prepare('INSERT INTO membros (pessoa_id, status) VALUES (?, "ativo")')
             ->execute([$pessoa]);
         $this->pdo->prepare(
             'INSERT INTO membro_departamentos (pessoa_id, departamento_id, data_inicio) VALUES (?, ?, CURDATE())'
         )->execute([$pessoa, $this->deptoId]);
+
+        // link gerado para o depto (congelado — migration 0010): a venda
+        // conta para o membro e para o depto do link, mesmo que ele mude
+        $dv = $this->repo->criarDivulgador($id, $pessoa, $this->deptoId);
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $dv['token']);
+        $this->pdo->prepare('UPDATE membro_departamentos SET data_fim = CURDATE() WHERE pessoa_id = ?')
+            ->execute([$pessoa]);
 
         $n = $this->repo->reservarNumeros($id, 3, ['nome' => 'C', 'telefone' => '91999990005'], (int) $dv['id']);
         $this->repo->marcarPago((int) $n[0]['id'], null);

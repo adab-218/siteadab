@@ -8,6 +8,7 @@ use Adab\Api\Json;
 use Adab\Api\Uploads;
 use Adab\Api\Validacao;
 use Adab\Api\Repositories\DepartamentoRepository;
+use Adab\Api\Repositories\MembroRepository;
 use Adab\Api\Repositories\RifaRepository;
 use Adab\Api\Repositories\UsuarioRepository;
 use PDO;
@@ -20,18 +21,27 @@ use Psr\Http\Message\ServerRequestInterface as Request;
  * de divulgação por membro e bilhetes com PIX manual (pendente expira
  * em 24h — liberação preguiçosa no repositório).
  * Escritas: secretaria/admin. Ciclo de vida: secretaria/admin.
+ * Escopo (D5/R1): lider_departamento gera/desativa links, vê bilhetes e
+ * confirma pagamento só de membros dos departamentos que lidera.
+ * Divulgadores (tokens) e bilhetes (telefone de compradores) não são
+ * visíveis a outros perfis.
  */
 final class RifasController
 {
     private RifaRepository $rifas;
     private DepartamentoRepository $deptos;
+    private MembroRepository $membros;
     private UsuarioRepository $usuarios;
     private Uploads $uploads;
+
+    /** @var int[]|null|false escopo memoizado; false = ainda não calculado */
+    private array|null|false $escopoCache = false;
 
     public function __construct(PDO $pdo, string $uploadsDir)
     {
         $this->rifas = new RifaRepository($pdo);
         $this->deptos = new DepartamentoRepository($pdo);
+        $this->membros = new MembroRepository($pdo);
         $this->usuarios = new UsuarioRepository($pdo);
         $this->uploads = new Uploads($uploadsDir);
     }
@@ -39,6 +49,65 @@ final class RifasController
     private function uid(): ?int
     {
         return (int) ($_SESSION['usuario']['id'] ?? 0) ?: null;
+    }
+
+    /**
+     * Escopo de divulgadores/bilhetes do usuário logado:
+     * null = tudo (admin/secretaria); ids dos deptos liderados (líder);
+     * [] = nada (demais perfis).
+     *
+     * @return int[]|null
+     */
+    private function escopoDeptos(): ?array
+    {
+        // memoizado por request (controller é recriado a cada request)
+        if ($this->escopoCache !== false) {
+            return $this->escopoCache;
+        }
+        $usuario = $_SESSION['usuario'] ?? [];
+        $perfil = $usuario['perfil'] ?? '';
+        if (in_array($perfil, ['admin', 'secretaria'], true)) {
+            $escopo = null;
+        } elseif ($perfil === 'lider_departamento') {
+            $escopo = $this->membros->departamentosLiderados((int) ($usuario['pessoa_id'] ?? 0));
+        } else {
+            $escopo = [];
+        }
+        $this->escopoCache = $escopo;
+        return $escopo;
+    }
+
+    /**
+     * O link de divulgação está no escopo? Usa o depto CONGELADO no link
+     * (migration 0010), não o vínculo atual do membro (D5/R1).
+     *
+     * @param array<string,mixed> $dv
+     */
+    private function linkNoEscopo(array $dv): bool
+    {
+        $escopo = $this->escopoDeptos();
+        if ($escopo === null) {
+            return true;
+        }
+        return $dv['departamento_id'] !== null && in_array((int) $dv['departamento_id'], $escopo, true);
+    }
+
+    /**
+     * Depto que será gravado no novo link: para o líder, o menor depto
+     * liderado em que a pessoa é membro ativo (null = fora do escopo);
+     * para secretaria/admin, o menor depto ativo da pessoa (pode ser null).
+     */
+    private function deptoParaLink(int $pessoaId): ?int
+    {
+        $deptos = array_map(
+            fn($d) => (int) $d['departamento_id'],
+            $this->membros->departamentosDoMembro($pessoaId)
+        );
+        $escopo = $this->escopoDeptos();
+        if ($escopo !== null) {
+            $deptos = array_values(array_intersect($deptos, $escopo));
+        }
+        return $deptos === [] ? null : min($deptos);
     }
 
     // ==================== rifas ====================
@@ -57,7 +126,7 @@ final class RifasController
 
     public function ver(Request $request, Response $response, array $args): Response
     {
-        $rifa = $this->rifas->detalhe((int) $args['id']);
+        $rifa = $this->rifas->detalhe((int) $args['id'], $this->escopoDeptos());
         if (!$rifa) {
             return Json::erro($response, 'NAO_ENCONTRADO', 'Rifa não encontrada.', 404);
         }
@@ -322,7 +391,9 @@ final class RifasController
 
     public function listarDivulgadores(Request $request, Response $response, array $args): Response
     {
-        return Json::resposta($response, ['data' => $this->rifas->listarDivulgadores((int) $args['id'])]);
+        return Json::resposta($response, [
+            'data' => $this->rifas->listarDivulgadores((int) $args['id'], $this->escopoDeptos()),
+        ]);
     }
 
     public function criarDivulgador(Request $request, Response $response, array $args): Response
@@ -340,14 +411,37 @@ final class RifasController
         if (!$this->usuarios->pessoaExiste($pessoaId)) {
             return Json::erro($response, 'VALIDACAO', 'pessoa_id inválida.', 400);
         }
-        $dv = $this->rifas->criarDivulgador($rifaId, $pessoaId);
+        $existente = $this->rifas->divulgadorDaPessoa($rifaId, $pessoaId);
+        if ($existente) {
+            // reativar/reaproveitar link mantém o depto original do link
+            if (!$this->linkNoEscopo($existente)) {
+                return Json::erro($response, 'SEM_PERMISSAO', 'Este link pertence a outro departamento.', 403);
+            }
+            $deptoId = $existente['departamento_id'] !== null ? (int) $existente['departamento_id'] : null;
+        } else {
+            $deptoId = $this->deptoParaLink($pessoaId);
+            if ($deptoId === null && $this->escopoDeptos() !== null) {
+                return Json::erro($response, 'SEM_PERMISSAO', 'Você só pode gerar links para membros do seu departamento.', 403);
+            }
+        }
+        $dv = $this->rifas->criarDivulgador($rifaId, $pessoaId, $deptoId);
         return Json::resposta($response, ['data' => $dv], 201);
     }
 
     public function desativarDivulgador(Request $request, Response $response, array $args): Response
     {
-        $this->rifas->desativarDivulgador((int) $args['id'], (int) $args['divulgadorId']);
-        return Json::resposta($response, ['data' => $this->rifas->listarDivulgadores((int) $args['id'])]);
+        $rifaId = (int) $args['id'];
+        $dv = $this->rifas->buscarDivulgador((int) $args['divulgadorId']);
+        if (!$dv || (int) $dv['rifa_id'] !== $rifaId) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Divulgador não encontrado.', 404);
+        }
+        if (!$this->linkNoEscopo($dv)) {
+            return Json::erro($response, 'SEM_PERMISSAO', 'Você só pode desativar links do seu departamento.', 403);
+        }
+        $this->rifas->desativarDivulgador($rifaId, (int) $dv['id']);
+        return Json::resposta($response, [
+            'data' => $this->rifas->listarDivulgadores($rifaId, $this->escopoDeptos()),
+        ]);
     }
 
     // ==================== bilhetes ====================
@@ -361,6 +455,7 @@ final class RifasController
             'q' => trim((string) ($q['q'] ?? '')),
             'divulgador_id' => $q['divulgador_id'] ?? null,
             'departamento_id' => $q['departamento_id'] ?? null,
+            'escopo_deptos' => $this->escopoDeptos(),
         ];
         $r = $this->rifas->listarBilhetes((int) $args['id'], $filtros, $pagina, $porPagina);
         return Json::paginada($response, $r['itens'], $r['total'], $pagina, $porPagina);
@@ -372,8 +467,24 @@ final class RifasController
         if (!$b || (int) $b['rifa_id'] !== (int) $args['id']) {
             return Json::erro($response, 'NAO_ENCONTRADO', 'Bilhete não encontrado.', 404);
         }
+        $lider = $this->escopoDeptos() !== null;
+        if ($lider) {
+            // R1: líder confirma só vendas de links do seu depto (mesma rifa)
+            $dv = $b['divulgador_id'] !== null ? $this->rifas->buscarDivulgador((int) $b['divulgador_id']) : false;
+            if (!$dv || (int) $dv['rifa_id'] !== (int) $b['rifa_id'] || !$this->linkNoEscopo($dv)) {
+                return Json::erro($response, 'SEM_PERMISSAO', 'Este bilhete não foi vendido pelo seu departamento.', 403);
+            }
+        }
         if ($b['status_pag'] !== 'pendente') {
             return Json::erro($response, 'STATUS_INVALIDO', 'Só bilhetes pendentes podem ser marcados como pagos.', 422);
+        }
+        $rifa = $this->rifas->buscar((int) $b['rifa_id']);
+        if (!$rifa || !in_array($rifa['status'], ['ativo', 'encerrado'], true)) {
+            return Json::erro($response, 'STATUS_INVALIDO', 'Pagamento só pode ser confirmado em sorteio ativo ou encerrado (antes da apuração).', 422);
+        }
+        // líder não confirma reserva vencida (secretaria pode, p/ PIX atrasado)
+        if ($lider && $this->rifas->reservaVencida((int) $b['id'])) {
+            return Json::erro($response, 'RESERVA_EXPIRADA', 'Reserva expirada — peça à secretaria para confirmar.', 422);
         }
         $this->rifas->marcarPago((int) $b['id'], $this->uid());
         return Json::resposta($response, ['data' => $this->rifas->buscarBilhete((int) $b['id'])]);

@@ -172,18 +172,19 @@ pontual/transferida em qualquer data (nº sequencial seguinte).
 ### M7 — Sorteios beneficentes (doc 13)
 | Método | Rota | Quem | Status |
 |--------|------|------|--------|
-| GET/POST/PUT | `/api/rifas[/{id}]` | leitura autenticado; escrita secretaria, admin | ✅ |
+| GET/POST/PUT | `/api/rifas[/{id}]` | leitura autenticado (campo `divulgadores` escopado: completo p/ secretaria/admin, só do depto p/ líder, vazio p/ demais); escrita secretaria, admin | ✅ |
 | DELETE | `/api/rifas/{id}` — soft, só rascunho | secretaria, admin | ✅ |
 | POST | `/api/rifas/{id}/ativar` — exige prêmio + regulamento + repartição Σ=100 | secretaria, admin | ✅ |
 | POST | `/api/rifas/{id}/encerrar` `/cancelar{motivo}` | secretaria, admin | ✅ |
 | POST | `/api/rifas/{id}/sortear` `{seed? | federal_numeros}` | secretaria, admin | ✅ |
 | POST/PUT/DELETE | `/api/rifas/{id}/premios[/{pid}]` — depto doador | secretaria, admin | ✅ |
 | PUT | `/api/rifas/{id}/reparticao` `{linhas[]}` — Σ=100 | secretaria, admin | ✅ |
-| GET/POST/DELETE | `/api/rifas/{id}/divulgadores[/{did}]` — token por membro | leitura autenticado; escrita secretaria, admin, lider_departamento | ✅ |
+| GET/POST/DELETE | `/api/rifas/{id}/divulgadores[/{did}]` — token por membro | secretaria, admin; lider_departamento só membros dos deptos que lidera (403 fora; 404 se `did` de outra rifa) | ✅ |
 | POST/DELETE | `/api/rifas/{id}/capa` — multipart `arquivo`, ≤2MB | secretaria, admin | ✅ |
 | POST/DELETE | `/api/rifas/{id}/premios/{pid}/imagem` — multipart `arquivo` | secretaria, admin | ✅ |
-| GET | `/api/rifas/{id}/bilhetes?q=&status_pag=&depto=&divulgador=` | autenticado | ✅ |
-| PATCH | `/api/rifas/{id}/bilhetes/{bid}/pagar` `/estornar` | secretaria, admin | ✅ |
+| GET | `/api/rifas/{id}/bilhetes?q=&status_pag=&departamento_id=&divulgador_id=` — contém telefone | secretaria, admin; lider_departamento só bilhetes de divulgadores do seu depto | ✅ |
+| PATCH | `/api/rifas/{id}/bilhetes/{bid}/pagar` | secretaria, admin; lider_departamento só bilhete vendido por divulgador do seu depto (R1) | ✅ |
+| PATCH | `/api/rifas/{id}/bilhetes/{bid}/estornar` | secretaria, admin | ✅ |
 | GET | `/api/rifas/{id}/ranking` — vendas por membro/depto | autenticado | ✅ |
 | GET | `/api/rifas/{id}/reparticao-extrato` — arrecadado × % | autenticado | ✅ |
 

@@ -484,18 +484,22 @@ interface DetalheProps {
   onErro: (m: string) => void;
 }
 
-const ABAS: { id: Aba; label: string; icon: React.ElementType }[] = [
+// `restrita`: só admin/secretaria/líder (API devolve 403 aos demais —
+// bilhetes têm telefone de compradores; divulgadores têm tokens)
+const ABAS: { id: Aba; label: string; icon: React.ElementType; restrita?: boolean }[] = [
   { id: 'premios', label: 'Prêmios', icon: Gift },
   { id: 'reparticao', label: 'Repartição', icon: Banknote },
-  { id: 'divulgadores', label: 'Divulgadores', icon: Users },
-  { id: 'bilhetes', label: 'Bilhetes', icon: Ticket },
+  { id: 'divulgadores', label: 'Divulgadores', icon: Users, restrita: true },
+  { id: 'bilhetes', label: 'Bilhetes', icon: Ticket, restrita: true },
   { id: 'ranking', label: 'Ranking', icon: Trophy },
   { id: 'resultado', label: 'Resultado/Extrato', icon: Check },
 ];
 
 const DetalheRifa: React.FC<DetalheProps> = (props) => {
-  const { detalhe, aba, setAba, onClose } = props;
+  const { detalhe, aba, setAba, onClose, podeDivulgar } = props;
   const meta = STATUS_META[detalhe.status];
+  const abas = ABAS.filter((a) => !a.restrita || podeDivulgar);
+  const abaAtual = abas.some((a) => a.id === aba) ? aba : 'premios';
   return (
     <Modal titulo={detalhe.titulo} onClose={onClose} largura="max-w-5xl">
       <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
@@ -507,23 +511,23 @@ const DetalheRifa: React.FC<DetalheProps> = (props) => {
         )}
       </div>
       <div className="flex flex-wrap gap-1 border-b mb-4">
-        {ABAS.map(({ id, label, icon: Icon }) => (
+        {abas.map(({ id, label, icon: Icon }) => (
           <button
             key={id} onClick={() => setAba(id)}
             className={`flex items-center gap-1 px-3 py-2 text-sm font-medium border-b-2 -mb-px ${
-              aba === id ? 'border-red-700 text-red-700' : 'border-transparent text-gray-500 hover:text-gray-800'
+              abaAtual === id ? 'border-red-700 text-red-700' : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
             <Icon size={14} aria-hidden="true" /> {label}
           </button>
         ))}
       </div>
-      {aba === 'premios' && <AbaPremios {...props} />}
-      {aba === 'reparticao' && <AbaReparticao {...props} />}
-      {aba === 'divulgadores' && <AbaDivulgadores {...props} />}
-      {aba === 'bilhetes' && <AbaBilhetes {...props} />}
-      {aba === 'ranking' && <AbaRanking {...props} />}
-      {aba === 'resultado' && <AbaResultado {...props} />}
+      {abaAtual === 'premios' && <AbaPremios {...props} />}
+      {abaAtual === 'reparticao' && <AbaReparticao {...props} />}
+      {abaAtual === 'divulgadores' && <AbaDivulgadores {...props} />}
+      {abaAtual === 'bilhetes' && <AbaBilhetes {...props} />}
+      {abaAtual === 'ranking' && <AbaRanking {...props} />}
+      {abaAtual === 'resultado' && <AbaResultado {...props} />}
     </Modal>
   );
 };
@@ -850,7 +854,9 @@ const AbaDivulgadores: React.FC<DetalheProps> = ({ detalhe, podeDivulgar, onChan
 
 // ---- Bilhetes ----
 
-const AbaBilhetes: React.FC<DetalheProps> = ({ detalhe, podeEditar, onErro }) => {
+// líder (podeDivulgar) só recebe da API os bilhetes do próprio depto e pode
+// confirmar pagamento deles (R1); estornar/liberar segue só secretaria/admin
+const AbaBilhetes: React.FC<DetalheProps> = ({ detalhe, podeEditar, podeDivulgar, onErro }) => {
   const [itens, setItens] = useState<RifaBilhete[]>([]);
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -915,7 +921,7 @@ const AbaBilhetes: React.FC<DetalheProps> = ({ detalhe, podeEditar, onErro }) =>
                   <td className="text-gray-500">{b.divulgador_nome ?? '—'}{b.departamento_nome ? ` (${b.departamento_nome})` : ''}</td>
                   <td><span className="text-xs">{PAG_LABEL[b.status_pag] ?? b.status_pag}</span></td>
                   <td className="text-right">
-                    {podeEditar && b.status_pag === 'pendente' && (
+                    {podeDivulgar && b.status_pag === 'pendente' && (
                       <button onClick={() => acao(b.id, 'pagar')} className="text-xs bg-green-100 text-green-800 rounded px-2 py-1 hover:bg-green-200">
                         Confirmar pago
                       </button>

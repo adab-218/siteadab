@@ -117,10 +117,26 @@ Header always set Referrer-Policy "strict-origin-when-cross-origin"
 ## Backup
 
 - cPanel → Backup (full) semanal, com cópia baixada para fora do servidor.
-- ⚠️ **Pendente (CHECKLIST OPS.3):** o script `cron/backup_db.php` ainda
-  NÃO existe no repositório — o cron abaixo é o alvo, não o estado atual.
-  Implementar `mysqldump` compactado em pasta fora de `public_html` +
-  retenção de 14 dias e agendar `php -f $HOME/cron/backup_db.php` diário.
+- **Backup diário do banco (OPS.3):** `api/backup-db.php` (classe
+  `Adab\Api\Backup`, só PDO — não depende de `mysqldump`/`exec`) é
+  publicado pelo deploy em `public_html/api/` (bloqueado na web pelo
+  `api/.htaccess` e por checagem de CLI). Gera
+  `~/adab_backups/adab_AAAAMMDD_HHMMSS.sql.gz` (fora do `public_html`,
+  permissão 0600) e apaga os com mais de 14 dias. Chaves opcionais em
+  `config.php`: `backup_dir`, `backup_retencao_dias`.
+- **Ação manual no cPanel** → Cron Jobs (uma vez):
+  `15 3 * * * /usr/local/bin/php -f $HOME/public_html/api/backup-db.php`
+  (conferir o caminho do PHP 8.3 no cPanel; e-mail do cron recebe
+  "Backup OK" ou "Backup FALHOU").
+  Se o e-mail trouxer "Apenas CLI.", o binário é CGI: usar
+  `/usr/local/bin/ea-php83 -f …` (ou o `php-cli` indicado pelo cPanel).
+- O dump omite colunas geradas (recalculadas no restore), lê tudo num
+  snapshot consistente e cria views em ordem de dependência.
+- **Restore:** `gunzip -c adab_….sql.gz | mysql -u USUARIO -p BANCO` ou
+  phpMyAdmin → Importar (aceita .gz). Restaurar primeiro num banco vazio
+  de teste. Coberto por `api/tests/BackupIntegrationTest.php` na CI.
+- Copiar periodicamente um backup para fora do servidor (o cPanel full
+  backup semanal continua valendo).
 - Teste de restore 1× por trimestre.
 
 ## Operação contínua

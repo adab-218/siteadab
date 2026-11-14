@@ -62,7 +62,8 @@ final class AutorizacaoIntegrationTest extends TestCase
     private function fixtures(): void
     {
         $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
-        foreach (['ebd_frequencias', 'ebd_aulas', 'ebd_periodos', 'ebd_alunos', 'ebd_professores',
+        foreach (['rifa_bilhetes', 'rifa_divulgadores', 'rifa_premios', 'rifa_reparticao', 'rifas',
+                  'ebd_frequencias', 'ebd_aulas', 'ebd_periodos', 'ebd_alunos', 'ebd_professores',
                   'ebd_classes', 'membro_departamentos', 'departamentos', 'membros',
                   'usuarios', 'pessoas'] as $t) {
             $this->pdo->exec("TRUNCATE {$t}");
@@ -208,7 +209,160 @@ final class AutorizacaoIntegrationTest extends TestCase
             // GET restrito a ebd_admin+ebd_professor
             'secretaria GET /ebd/alunos' => ['secretaria', 'GET', '/ebd/alunos', null],
             'lider GET /ebd/alunos' => ['lider_departamento', 'GET', '/ebd/alunos', null],
+            // M7: bilhetes (telefones) e divulgadores (tokens) só secretaria/líder
+            'dirigente GET /rifas/1/bilhetes' => ['dirigente', 'GET', '/rifas/1/bilhetes', null],
+            'ebd_professor GET /rifas/1/bilhetes' => ['ebd_professor', 'GET', '/rifas/1/bilhetes', null],
+            'ebd_admin GET /rifas/1/divulgadores' => ['ebd_admin', 'GET', '/rifas/1/divulgadores', null],
+            'dirigente PATCH pagar' => ['dirigente', 'PATCH', '/rifas/1/bilhetes/1/pagar', null],
+            'lider PATCH estornar' => ['lider_departamento', 'PATCH', '/rifas/1/bilhetes/1/estornar', null],
         ];
+    }
+
+    /**
+     * Cria rifa ativa com 2 divulgadores (um membro do depto do líder,
+     * outro de depto alheio) e 1 bilhete pendente de cada.
+     *
+     * @return array{rifa:int, dvProprio:int, dvAlheio:int, bProprio:int, bAlheio:int,
+     *               pessoaPropria:int, pessoaAlheia:int}
+     */
+    private function fixturesRifa(): array
+    {
+        $propria = $this->novaPessoa('Divulgador Jovens');
+        $alheia = $this->novaPessoa('Divulgador Juvenis');
+        foreach ([[$propria, $this->deptoComLider], [$alheia, $this->deptoSemLider]] as [$p, $d]) {
+            $this->pdo->prepare('INSERT INTO membros (pessoa_id, status) VALUES (?, "ativo")')->execute([$p]);
+            $this->pdo->prepare('INSERT INTO membro_departamentos (pessoa_id, departamento_id) VALUES (?, ?)')
+                ->execute([$p, $d]);
+        }
+        $this->pdo->exec("INSERT INTO rifas (titulo, slug, valor_numero, total_numeros, status)
+                          VALUES ('Sorteio Auth', 'sorteio-auth', 10.00, 100, 'ativo')");
+        $rifa = (int) $this->pdo->lastInsertId();
+
+        $ids = [];
+        $deptoDoLink = ['proprio' => $this->deptoComLider, 'alheio' => $this->deptoSemLider];
+        foreach (['proprio' => $propria, 'alheio' => $alheia] as $k => $p) {
+            $this->pdo->prepare(
+                'INSERT INTO rifa_divulgadores (rifa_id, pessoa_id, departamento_id, token) VALUES (?, ?, ?, ?)'
+            )->execute([$rifa, $p, $deptoDoLink[$k], bin2hex(random_bytes(16))]);
+            $ids['dv' . ucfirst($k)] = (int) $this->pdo->lastInsertId();
+            $this->pdo->prepare(
+                'INSERT INTO rifa_bilhetes (rifa_id, numero, nome, telefone, status_pag, divulgador_id)
+                 VALUES (?, ?, ?, "91999990000", "pendente", ?)'
+            )->execute([$rifa, $k === 'proprio' ? 1 : 2, "Comprador {$k}", $ids['dv' . ucfirst($k)]]);
+            $ids['b' . ucfirst($k)] = (int) $this->pdo->lastInsertId();
+        }
+        return $ids + ['rifa' => $rifa, 'pessoaPropria' => $propria, 'pessoaAlheia' => $alheia];
+    }
+
+    /** D5/R1 no M7: líder só gera/desativa links, vê e confirma bilhetes do próprio depto. */
+    public function testD5LiderSomenteNoProprioDeptoNosSorteios(): void
+    {
+        $f = $this->fixturesRifa();
+        $rifa = $f['rifa'];
+
+        // listas escopadas
+        [$s, $body] = $this->request('GET', "/rifas/{$rifa}/divulgadores", 'lider_departamento');
+        $this->assertSame(200, $s);
+        $this->assertSame([$f['dvProprio']], array_map(fn($d) => (int) $d['id'], $body['data']));
+
+        [$s, $body] = $this->request('GET', "/rifas/{$rifa}/bilhetes", 'lider_departamento');
+        $this->assertSame(200, $s);
+        $this->assertSame([$f['bProprio']], array_map(fn($b) => (int) $b['id'], $body['data']['itens']));
+
+        [$s, $body] = $this->request('GET', "/rifas/{$rifa}", 'lider_departamento');
+        $this->assertSame(200, $s);
+        $this->assertCount(1, $body['data']['divulgadores']);
+
+        // detalhe para perfil sem acesso não expõe tokens
+        [$s, $body] = $this->request('GET', "/rifas/{$rifa}", 'dirigente');
+        $this->assertSame(200, $s);
+        $this->assertSame([], $body['data']['divulgadores']);
+
+        // gerar link: membro de outro depto → 403; do próprio → 201
+        $outro = $this->novaPessoa('Outro Juvenil');
+        $this->pdo->prepare('INSERT INTO membros (pessoa_id, status) VALUES (?, "ativo")')->execute([$outro]);
+        $this->pdo->prepare('INSERT INTO membro_departamentos (pessoa_id, departamento_id) VALUES (?, ?)')
+            ->execute([$outro, $this->deptoSemLider]);
+        [$s, $body] = $this->request('POST', "/rifas/{$rifa}/divulgadores", 'lider_departamento', ['pessoa_id' => $outro]);
+        $this->assertSame(403, $s);
+        $this->assertSame('SEM_PERMISSAO', $body['error']['code']);
+
+        $meu = $this->novaPessoa('Novo Jovem');
+        $this->pdo->prepare('INSERT INTO membros (pessoa_id, status) VALUES (?, "ativo")')->execute([$meu]);
+        $this->pdo->prepare('INSERT INTO membro_departamentos (pessoa_id, departamento_id) VALUES (?, ?)')
+            ->execute([$meu, $this->deptoComLider]);
+        [$s, ] = $this->request('POST', "/rifas/{$rifa}/divulgadores", 'lider_departamento', ['pessoa_id' => $meu]);
+        $this->assertSame(201, $s);
+
+        // desativar link alheio → 403; divulgador de outra rifa → 404
+        [$s, ] = $this->request('DELETE', "/rifas/{$rifa}/divulgadores/{$f['dvAlheio']}", 'lider_departamento');
+        $this->assertSame(403, $s);
+        [$s, ] = $this->request('DELETE', '/rifas/999999/divulgadores/' . $f['dvProprio'], 'lider_departamento');
+        $this->assertSame(404, $s);
+        [$s, ] = $this->request('DELETE', "/rifas/{$rifa}/divulgadores/{$f['dvProprio']}", 'lider_departamento');
+        $this->assertSame(200, $s);
+
+        // confirmar pagamento: alheio → 403; próprio → 200
+        [$s, ] = $this->request('PATCH', "/rifas/{$rifa}/bilhetes/{$f['bAlheio']}/pagar", 'lider_departamento');
+        $this->assertSame(403, $s);
+        [$s, $body] = $this->request('PATCH', "/rifas/{$rifa}/bilhetes/{$f['bProprio']}/pagar", 'lider_departamento');
+        $this->assertSame(200, $s);
+        $this->assertSame('pago', $body['data']['status_pag']);
+
+        // secretaria continua vendo tudo
+        [$s, $body] = $this->request('GET', "/rifas/{$rifa}/divulgadores", 'secretaria');
+        $this->assertSame(200, $s);
+        $this->assertCount(3, $body['data']);
+    }
+
+    /**
+     * Regressão (auditoria): líder inclui o divulgador alheio no próprio
+     * depto — o escopo usa o depto congelado no link, então nada muda.
+     */
+    public function testLiderNaoAmpliaEscopoIncluindoDivulgadorNoProprioDepto(): void
+    {
+        $f = $this->fixturesRifa();
+        $rifa = $f['rifa'];
+
+        [$s, ] = $this->request('POST', "/departamentos/{$this->deptoComLider}/membros", 'lider_departamento', [
+            'pessoa_id' => $f['pessoaAlheia'],
+        ]);
+        $this->assertSame(201, $s, 'pré-condição: líder vincula membro ao próprio depto');
+
+        [$s, $body] = $this->request('GET', "/rifas/{$rifa}/bilhetes", 'lider_departamento');
+        $this->assertSame(200, $s);
+        $this->assertSame([$f['bProprio']], array_map(fn($b) => (int) $b['id'], $body['data']['itens']));
+
+        [$s, $body] = $this->request('GET', "/rifas/{$rifa}/divulgadores", 'lider_departamento');
+        $this->assertSame([$f['dvProprio']], array_map(fn($d) => (int) $d['id'], $body['data']));
+
+        [$s, ] = $this->request('PATCH', "/rifas/{$rifa}/bilhetes/{$f['bAlheio']}/pagar", 'lider_departamento');
+        $this->assertSame(403, $s);
+        // reaproveitar/reativar o link alheio também é barrado
+        [$s, ] = $this->request('POST', "/rifas/{$rifa}/divulgadores", 'lider_departamento', [
+            'pessoa_id' => $f['pessoaAlheia'],
+        ]);
+        $this->assertSame(403, $s);
+        [$s, ] = $this->request('DELETE', "/rifas/{$rifa}/divulgadores/{$f['dvAlheio']}", 'lider_departamento');
+        $this->assertSame(403, $s);
+    }
+
+    /** Pagamento: reserva vencida (líder) e sorteio cancelado (todos) → 422. */
+    public function testPagarRespeitaPrazoEStatusDaRifa(): void
+    {
+        $f = $this->fixturesRifa();
+        $rifa = $f['rifa'];
+
+        $this->pdo->prepare('UPDATE rifa_bilhetes SET expira_em = NOW() - INTERVAL 1 HOUR WHERE id = ?')
+            ->execute([$f['bProprio']]);
+        [$s, $body] = $this->request('PATCH', "/rifas/{$rifa}/bilhetes/{$f['bProprio']}/pagar", 'lider_departamento');
+        $this->assertSame(422, $s);
+        $this->assertSame('RESERVA_EXPIRADA', $body['error']['code']);
+
+        $this->pdo->prepare("UPDATE rifas SET status = 'cancelado' WHERE id = ?")->execute([$rifa]);
+        [$s, $body] = $this->request('PATCH', "/rifas/{$rifa}/bilhetes/{$f['bAlheio']}/pagar", 'secretaria');
+        $this->assertSame(422, $s);
+        $this->assertSame('STATUS_INVALIDO', $body['error']['code']);
     }
 
     /** D3: ebd_professor chama só a classe onde leciona (gate do controller). */

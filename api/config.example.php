@@ -33,6 +33,10 @@ return [
     // Diretório de uploads fora do versionamento (fotos, banners).
     'uploads_dir' => dirname(__DIR__) . '/uploads',
 
+    // Backup diário (api/backup-db.php via cron). Padrão: ~/adab_backups, 14 dias.
+    // 'backup_dir' => dirname(__DIR__, 2) . '/adab_backups',
+    // 'backup_retencao_dias' => 14,
+
     // URL base pública usada em e-mails (recuperação de senha).
     'app_url' => 'http://localhost:5173', // prod: https://adab.teo.br
 

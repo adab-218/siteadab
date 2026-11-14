@@ -98,7 +98,8 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
 - [x] OPS.1 Admin criado via phpMyAdmin (login confirmado em prod);
       `api/create-admin.php` commitado p/ bootstrap futuro via CLI
 - [ ] OPS.2 Configurar SMTP no cPanel + secrets (`SMTP_*`) p/ recuperação de senha
-- [ ] OPS.3 Backup do banco: commitar `cron/backup_db.php` + agendar cron no cPanel
+- [~] OPS.3 Backup do banco: `api/backup-db.php` + `Adab\Api\Backup` (PDO, .sql.gz,
+      retenção 14d, teste de restore na CI) ✅ — **falta agendar o cron no cPanel** (doc 11)
 - [ ] OPS.4 Uptime monitor externo (UptimeRobot/Healthchecks) pingando `/api/health`
 - [~] OPS.5 `session_save_path`: deploy já gera `~/adab_sessions` (criado em runtime);
       confirmar criação após próximo deploy
@@ -148,8 +149,24 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       página pública `/sorteio/:slug`; `RifasIntegrationTest` ✅ CI).
       Upload de capa/imagem de prêmio ✅ (`POST/DELETE /rifas/{id}/capa`,
       `/premios/{pid}/imagem`, multipart via `Api\Uploads` em `uploads/rifas/`).
-      Pendente: escopo do líder_departamento no backend (líder gera
-      links de qualquer membro — refinar para só o seu depto)
+      Escopo do líder (D5/R1) ✅: links, bilhetes e confirmação de
+      pagamento só do(s) depto(s) que lidera, pelo depto **congelado no
+      link** (migration 0010 — o líder não amplia o escopo incluindo
+      membros no próprio depto); GET bilhetes (telefones) e divulgadores
+      (tokens) fechados a dirigente/EBD; pagar exige rifa ativa/encerrada
+      e, para o líder, reserva dentro do prazo; testes em
+      `AutorizacaoIntegrationTest`
+- [ ] T2.8 Achados da auditoria M7 (2026-11-14), pré-existentes:
+      - **Médio** — rate limit por IP em `POST /public/sorteios/{slug}/reservar`
+        e `GET .../bilhetes?telefone=` (bot esgota números por 24h);
+        `meusBilhetes` responder só para rifa ativa/encerrada/sorteada
+      - **Médio (suspeita)** — seed do sorteio escolhida na hora da
+        apuração: publicar compromisso (hash da seed) na ativação
+      - **Médio** — ranking/extrato atribuem o divulgador ao
+        `MIN(departamento_id)` atual; migrar para `rifa_divulgadores.departamento_id`
+      - **Baixo** — `imagem_url` livre em `PUT /premios` (aceitar só uploads);
+        `vencedor_nome` visível a todos os perfis em `GET /rifas/{id}`;
+        reativar link reaproveita o mesmo token (rotacionar)
 
 ## DECISÕES — pendentes do cliente (bloqueiam partes do T2)
 

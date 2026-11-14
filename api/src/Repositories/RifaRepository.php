@@ -81,8 +81,13 @@ final class RifaRepository
         return $stmt->fetch();
     }
 
-    /** Rifa completa para o painel: prêmios, repartição, divulgadores. */
-    public function detalhe(int $id): array|false
+    /**
+     * Rifa completa para o painel: prêmios, repartição, divulgadores.
+     *
+     * @param int[]|null $escopoDeptos divulgadores restritos a membros
+     *                                 desses deptos (null = todos; [] = nenhum)
+     */
+    public function detalhe(int $id, ?array $escopoDeptos = null): array|false
     {
         $rifa = $this->buscar($id);
         if (!$rifa) {
@@ -90,8 +95,23 @@ final class RifaRepository
         }
         $rifa['premios'] = $this->listarPremios($id);
         $rifa['reparticao'] = $this->listarReparticao($id);
-        $rifa['divulgadores'] = $this->listarDivulgadores($id);
+        $rifa['divulgadores'] = $this->listarDivulgadores($id, $escopoDeptos);
         return $rifa;
+    }
+
+    /**
+     * Condição SQL de escopo D5: o link de divulgação (alias $alias) foi
+     * gerado para um dos deptos. Usa o depto CONGELADO no link (0010), não
+     * o vínculo atual — o líder pode incluir membros no próprio depto e
+     * não deve com isso ganhar acesso a vendas de outros deptos.
+     * Ids são inteiros sanitizados por intval — seguros para interpolação.
+     *
+     * @param int[] $deptoIds não vazio
+     */
+    private function condLinkDosDeptos(string $alias, array $deptoIds): string
+    {
+        $ids = implode(',', array_map('intval', $deptoIds));
+        return "{$alias}.departamento_id IN ({$ids})";
     }
 
     /** @param array<string,mixed> $dados */
@@ -277,9 +297,16 @@ final class RifaRepository
 
     // ==================== divulgadores ====================
 
-    /** @return array<int,array> */
-    public function listarDivulgadores(int $rifaId): array
+    /**
+     * @param int[]|null $escopoDeptos null = todos; [] = nenhum (D5)
+     * @return array<int,array>
+     */
+    public function listarDivulgadores(int $rifaId, ?array $escopoDeptos = null): array
     {
+        if ($escopoDeptos === []) {
+            return [];
+        }
+        $escopo = $escopoDeptos === null ? '' : ' AND ' . $this->condLinkDosDeptos('d', $escopoDeptos);
         $stmt = $this->pdo->prepare(
             'SELECT d.*, p.nome_completo,
                     (SELECT COUNT(*) FROM rifa_bilhetes b
@@ -288,21 +315,39 @@ final class RifaRepository
                       WHERE b.divulgador_id = d.id AND b.status_pag = \'pago\') AS vendas_pagas
                FROM rifa_divulgadores d
                JOIN pessoas p ON p.id = d.pessoa_id
-              WHERE d.rifa_id = ?
+              WHERE d.rifa_id = ?' . $escopo . '
               ORDER BY p.nome_completo'
         );
         $stmt->execute([$rifaId]);
         return $stmt->fetchAll();
     }
 
-    /** Cria (ou reativa) o link de divulgação do membro; retorna a linha. */
-    public function criarDivulgador(int $rifaId, int $pessoaId): array
+    /** @return array<string,mixed>|false */
+    public function buscarDivulgador(int $id)
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM rifa_divulgadores WHERE id = ?');
+        $stmt->execute([$id]);
+        return $stmt->fetch();
+    }
+
+    /** @return array<string,mixed>|false link existente do membro nesta rifa */
+    public function divulgadorDaPessoa(int $rifaId, int $pessoaId)
     {
         $stmt = $this->pdo->prepare(
             'SELECT * FROM rifa_divulgadores WHERE rifa_id = ? AND pessoa_id = ?'
         );
         $stmt->execute([$rifaId, $pessoaId]);
-        $existe = $stmt->fetch();
+        return $stmt->fetch();
+    }
+
+    /**
+     * Cria (ou reativa) o link de divulgação do membro; retorna a linha.
+     * O depto informado é gravado só na criação — reativar mantém o depto
+     * original do link (o controller barra reativação fora do escopo).
+     */
+    public function criarDivulgador(int $rifaId, int $pessoaId, ?int $departamentoId = null): array
+    {
+        $existe = $this->divulgadorDaPessoa($rifaId, $pessoaId);
         if ($existe) {
             if (!$existe['ativo']) {
                 $this->pdo->prepare('UPDATE rifa_divulgadores SET ativo = 1 WHERE id = ?')
@@ -313,12 +358,13 @@ final class RifaRepository
         }
         $token = bin2hex(random_bytes(16));
         $this->pdo->prepare(
-            'INSERT INTO rifa_divulgadores (rifa_id, pessoa_id, token) VALUES (?, ?, ?)'
-        )->execute([$rifaId, $pessoaId, $token]);
+            'INSERT INTO rifa_divulgadores (rifa_id, pessoa_id, departamento_id, token) VALUES (?, ?, ?, ?)'
+        )->execute([$rifaId, $pessoaId, $departamentoId, $token]);
         return [
             'id' => (int) $this->pdo->lastInsertId(),
             'rifa_id' => $rifaId,
             'pessoa_id' => $pessoaId,
+            'departamento_id' => $departamentoId,
             'token' => $token,
             'ativo' => 1,
         ];
@@ -331,16 +377,12 @@ final class RifaRepository
         )->execute([$id, $rifaId]);
     }
 
-    /** Resolve token de divulgação (ativo) → divulgador + depto do membro. */
+    /** Resolve token de divulgação (ativo) → divulgador (com depto congelado no link — 0010). */
     public function divulgadorPorToken(string $token): array|false
     {
         $stmt = $this->pdo->prepare(
-            'SELECT d.*, md.departamento_id
+            'SELECT d.*
                FROM rifa_divulgadores d
-               LEFT JOIN (SELECT pessoa_id, MIN(departamento_id) AS departamento_id
-                            FROM membro_departamentos WHERE data_fim IS NULL
-                           GROUP BY pessoa_id) md
-                      ON md.pessoa_id = d.pessoa_id
               WHERE d.token = ? AND d.ativo = 1
               LIMIT 1'
         );
@@ -349,6 +391,17 @@ final class RifaRepository
     }
 
     // ==================== bilhetes ====================
+
+    /** Reserva pendente já passou do prazo (relógio do MySQL, como expirarPendentes)? */
+    public function reservaVencida(int $bilheteId): bool
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM rifa_bilhetes
+              WHERE id = ? AND status_pag = 'pendente' AND expira_em IS NOT NULL AND expira_em < NOW()"
+        );
+        $stmt->execute([$bilheteId]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
 
     /** Libera preguiçosamente reservas vencidas (D-R11: pendente > 24h). */
     public function expirarPendentes(int $rifaId): int
@@ -436,13 +489,17 @@ final class RifaRepository
             $where[] = 'ddep.id = :dep';
             $params['dep'] = (int) $filtros['departamento_id'];
         }
+        // D5: líder vê só bilhetes vendidos por divulgadores do seu depto
+        if (array_key_exists('escopo_deptos', $filtros) && $filtros['escopo_deptos'] !== null) {
+            if ($filtros['escopo_deptos'] === []) {
+                return ['itens' => [], 'total' => 0];
+            }
+            $where[] = $this->condLinkDosDeptos('rd', $filtros['escopo_deptos']);
+        }
         $cond = implode(' AND ', $where);
         $joinDiv = 'LEFT JOIN rifa_divulgadores rd ON rd.id = b.divulgador_id
                     LEFT JOIN pessoas pd ON pd.id = rd.pessoa_id
-                    LEFT JOIN (SELECT pessoa_id, MIN(departamento_id) AS departamento_id
-                                 FROM membro_departamentos WHERE data_fim IS NULL
-                                GROUP BY pessoa_id) md ON md.pessoa_id = rd.pessoa_id
-                    LEFT JOIN departamentos ddep ON ddep.id = md.departamento_id';
+                    LEFT JOIN departamentos ddep ON ddep.id = rd.departamento_id';
 
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM rifa_bilhetes b {$joinDiv} WHERE {$cond}");
         $stmt->execute($params);
@@ -529,10 +586,7 @@ final class RifaRepository
                FROM rifa_bilhetes b
                JOIN rifa_divulgadores rd ON rd.id = b.divulgador_id
                JOIN pessoas p ON p.id = rd.pessoa_id
-               LEFT JOIN (SELECT pessoa_id, MIN(departamento_id) AS departamento_id
-                            FROM membro_departamentos WHERE data_fim IS NULL
-                           GROUP BY pessoa_id) md ON md.pessoa_id = rd.pessoa_id
-               LEFT JOIN departamentos ddep ON ddep.id = md.departamento_id
+               LEFT JOIN departamentos ddep ON ddep.id = rd.departamento_id
               WHERE b.rifa_id = ? AND b.status_pag IN ('pago','pendente','gratuito')
               GROUP BY rd.id, p.nome_completo, ddep.id, ddep.nome
               ORDER BY pagos DESC, reservas DESC"
@@ -558,17 +612,14 @@ final class RifaRepository
         $pagos = (int) ($qtd['pago'] ?? 0);
         $arrecadado = round($pagos * $valor, 2);
 
-        // vendas por departamento (via depto atual do divulgador)
+        // vendas por departamento (depto congelado no link — migration 0010)
         $stmt = $this->pdo->prepare(
             "SELECT COALESCE(ddep.id, 0) AS departamento_id,
                     COALESCE(ddep.nome, 'Sem departamento') AS departamento_nome,
                     COUNT(*) AS pagos
                FROM rifa_bilhetes b
                JOIN rifa_divulgadores rd ON rd.id = b.divulgador_id
-               LEFT JOIN (SELECT pessoa_id, MIN(departamento_id) AS departamento_id
-                            FROM membro_departamentos WHERE data_fim IS NULL
-                           GROUP BY pessoa_id) md ON md.pessoa_id = rd.pessoa_id
-               LEFT JOIN departamentos ddep ON ddep.id = md.departamento_id
+               LEFT JOIN departamentos ddep ON ddep.id = rd.departamento_id
               WHERE b.rifa_id = ? AND b.status_pag = 'pago'
               GROUP BY ddep.id, ddep.nome"
         );
