@@ -156,7 +156,9 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       (tokens) fechados a dirigente/EBD; pagar exige rifa ativa/encerrada
       e, para o líder, reserva dentro do prazo; testes em
       `AutorizacaoIntegrationTest`
-- [ ] T2.8 Achados da auditoria M7 (2026-11-14), pré-existentes:
+- [x] T2.8 Achados da auditoria M7 (2026-11-14) — resolvidos com a
+      migration 0011 (rate_limit_eventos, compromisso da seed, view com
+      seed só após o sorteio):
       - **Médio** — rate limit por IP em `POST /public/sorteios/{slug}/reservar`
         e `GET .../bilhetes?telefone=` (bot esgota números por 24h);
         `meusBilhetes` responder só para rifa ativa/encerrada/sorteada
@@ -167,6 +169,12 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       - **Baixo** — `imagem_url` livre em `PUT /premios` (aceitar só uploads);
         `vencedor_nome` visível a todos os perfis em `GET /rifas/{id}`;
         reativar link reaproveita o mesmo token (rotacionar)
+      - Resolução: 429 `MUITAS_TENTATIVAS` por IP (30 reservas/10 min,
+        300 números/h, 30 consultas/10 min); commit-reveal na ativação
+        (seed oculta até `sorteado`, `metodo` imutável após ativar);
+        ranking/extrato já usam o depto congelado no link (0010);
+        `imagem_url` só por upload; `vencedor_nome` nulo para perfis sem
+        escopo; reativar link gera token novo
 
 ## DECISÕES — pendentes do cliente (bloqueiam partes do T2)
 

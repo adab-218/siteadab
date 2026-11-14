@@ -764,7 +764,9 @@ export interface Rifa {
   metodo: RifaMetodo;
   status: RifaStatus;
   pix_instrucoes: string | null;
+  /** Revelada só após o sorteio (null antes — commit-reveal). */
   seed: string | null;
+  /** SHA-256 da seed, publicado na ativação (método sistema). */
   prova_hash: string | null;
   federal_numeros: string | null;
   cancelado_motivo: string | null;
@@ -879,7 +881,7 @@ export const rifasApi = {
   encerrar: (id: number) => apiFetch<Rifa>(`/rifas/${id}/encerrar`, { method: 'POST' }),
   cancelar: (id: number, motivo: string) =>
     apiFetch<Rifa>(`/rifas/${id}/cancelar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
-  sortear: (id: number, p: { seed?: string; federal_numeros?: string }) =>
+  sortear: (id: number, p: { federal_numeros?: string }) =>
     apiFetch<{ rifa: Rifa; resultado: { vencedores: number[]; seed: string; prova: string } }>(
       `/rifas/${id}/sortear`, { method: 'POST', body: JSON.stringify(p) }),
   criarPremio: (id: number, p: { ordem?: number; titulo: string; descricao?: string; valor_estimado?: number | null; departamento_id: number }) =>
@@ -933,6 +935,8 @@ export interface SorteioPublico {
   status: RifaStatus;
   pix_instrucoes: string | null;
   prova_hash: string | null;
+  /** Só preenchida quando status = 'sorteado'. */
+  seed: string | null;
   federal_numeros: string | null;
   numeros_reservados: number;
   total_premios: number;

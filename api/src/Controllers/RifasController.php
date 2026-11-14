@@ -125,7 +125,8 @@ final class RifasController
             'q' => trim((string) ($q['q'] ?? '')),
         ];
         $r = $this->rifas->listarPaginado($filtros, $pagina, $porPagina);
-        return Json::paginada($response, $r['itens'], $r['total'], $pagina, $porPagina);
+        $itens = array_map([RifaRepository::class, 'ocultarSemente'], $r['itens']);
+        return Json::paginada($response, $itens, $r['total'], $pagina, $porPagina);
     }
 
     public function ver(Request $request, Response $response, array $args): Response
@@ -134,7 +135,14 @@ final class RifasController
         if (!$rifa) {
             return Json::erro($response, 'NAO_ENCONTRADO', 'Rifa não encontrada.', 404);
         }
-        return Json::resposta($response, ['data' => $rifa]);
+        if ($this->escopoDeptos() === []) {
+            // sem escopo (dirigente, EBD...): não vê compradores vencedores
+            $rifa['premios'] = array_map(function (array $p): array {
+                $p['vencedor_nome'] = null;
+                return $p;
+            }, $rifa['premios']);
+        }
+        return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($rifa)]);
     }
 
     public function criar(Request $request, Response $response): Response
@@ -145,7 +153,7 @@ final class RifasController
             return Json::erro($response, 'VALIDACAO', implode(' ', $erros), 400);
         }
         $id = $this->rifas->criar($this->normalizar($b), $this->uid());
-        return Json::resposta($response, ['data' => $this->rifas->buscar($id)], 201);
+        return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($this->rifas->buscar($id))], 201);
     }
 
     public function atualizar(Request $request, Response $response, array $args): Response
@@ -163,8 +171,12 @@ final class RifasController
         if ($erros) {
             return Json::erro($response, 'VALIDACAO', implode(' ', $erros), 400);
         }
+        // o método e o compromisso (prova_hash) são publicados na ativação
+        if ($atual['status'] !== 'rascunho' && array_key_exists('metodo', $b) && $b['metodo'] !== $atual['metodo']) {
+            return Json::erro($response, 'IMUTAVEL', 'O método de sorteio não pode mudar depois da ativação.', 422);
+        }
         $this->rifas->atualizar($id, $this->normalizar($b, parcial: true));
-        return Json::resposta($response, ['data' => $this->rifas->buscar($id)]);
+        return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($this->rifas->buscar($id))]);
     }
 
     public function remover(Request $request, Response $response, array $args): Response
@@ -197,8 +209,9 @@ final class RifasController
         if (!$chk['ok']) {
             return Json::erro($response, $chk['code'] ?? 'VALIDACAO', $chk['erro'], 422);
         }
+        $this->rifas->comprometerSemente($id);
         $this->rifas->mudarStatus($id, 'ativo');
-        return Json::resposta($response, ['data' => $this->rifas->buscar($id)]);
+        return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($this->rifas->buscar($id))]);
     }
 
     public function encerrar(Request $request, Response $response, array $args): Response
@@ -209,7 +222,7 @@ final class RifasController
             return Json::erro($response, 'STATUS_INVALIDO', 'Só rifas ativas podem ser encerradas.', 422);
         }
         $this->rifas->mudarStatus($id, 'encerrado');
-        return Json::resposta($response, ['data' => $this->rifas->buscar($id)]);
+        return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($this->rifas->buscar($id))]);
     }
 
     public function cancelar(Request $request, Response $response, array $args): Response
@@ -227,7 +240,7 @@ final class RifasController
             return Json::erro($response, 'VALIDACAO', 'Informe o motivo do cancelamento (até 300 caracteres).', 400);
         }
         $this->rifas->salvarCancelamento($id, $motivo);
-        return Json::resposta($response, ['data' => $this->rifas->buscar($id)]);
+        return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($this->rifas->buscar($id))]);
     }
 
     // ==================== prêmios ====================
@@ -269,7 +282,8 @@ final class RifasController
             return Json::erro($response, 'VALIDACAO', implode(' ', $erros), 400);
         }
         $limpo = [];
-        foreach (['ordem', 'titulo', 'descricao', 'valor_estimado', 'departamento_id', 'imagem_url'] as $c) {
+        // imagem_url só via upload (POST .../imagem) — nunca URL livre
+        foreach (['ordem', 'titulo', 'descricao', 'valor_estimado', 'departamento_id'] as $c) {
             if (array_key_exists($c, $b)) {
                 $limpo[$c] = $b[$c] === '' ? null : $b[$c];
             }
@@ -344,7 +358,7 @@ final class RifasController
         }
         $this->uploads->remover($rifa['capa_url']);
         $this->rifas->atualizar($id, ['capa_url' => $url]);
-        return Json::resposta($response, ['data' => $this->rifas->buscar($id)]);
+        return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($this->rifas->buscar($id))]);
     }
 
     public function removerCapa(Request $request, Response $response, array $args): Response
@@ -356,7 +370,7 @@ final class RifasController
         }
         $this->uploads->remover($rifa['capa_url']);
         $this->rifas->atualizar($id, ['capa_url' => null]);
-        return Json::resposta($response, ['data' => $this->rifas->buscar($id)]);
+        return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($this->rifas->buscar($id))]);
     }
 
     /** POST /rifas/{id}/premios/{premioId}/imagem — multipart "arquivo". */
@@ -530,7 +544,7 @@ final class RifasController
             return Json::erro($response, 'SEM_PREMIO', 'Cadastre ao menos 1 prêmio.', 422);
         }
         $b = (array) $request->getParsedBody();
-        $seed = trim((string) ($b['seed'] ?? '')) ?: null;
+        // seed não é aceita no body: vem do compromisso feito na ativação
         $federal = null;
         if ($rifa['metodo'] === 'federal') {
             $federal = trim((string) ($b['federal_numeros'] ?? ''));
@@ -539,7 +553,7 @@ final class RifasController
             }
         }
         try {
-            $resultado = $this->rifas->sortear($id, $seed, $federal);
+            $resultado = $this->rifas->sortear($id, $federal);
         } catch (\RuntimeException $e) {
             if ($e->getMessage() === 'SEM_ELEGIVEIS') {
                 return Json::erro($response, 'SEM_ELEGIVEIS', 'Nenhum bilhete pago/gratuito elegível para o sorteio.', 422);

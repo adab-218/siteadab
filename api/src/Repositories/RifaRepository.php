@@ -164,6 +164,38 @@ final class RifaRepository
 
     // ==================== ciclo de vida ====================
 
+    /**
+     * Compromisso da semente (commit-reveal, T2.8): no método 'sistema'
+     * gera a seed secreta e publica prova_hash = SHA-256(seed) ANTES das
+     * vendas. Idempotente — não troca uma seed já comprometida. A seed só
+     * é revelada após o sorteio (view pública e ocultarSemente()).
+     * $seed fixa só para testes.
+     */
+    public function comprometerSemente(int $id, ?string $seed = null): void
+    {
+        $seed ??= bin2hex(random_bytes(32));
+        $this->pdo->prepare(
+            "UPDATE rifas SET seed = ?, prova_hash = ?
+              WHERE id = ? AND metodo = 'sistema' AND seed IS NULL"
+        )->execute([$seed, hash('sha256', $seed), $id]);
+    }
+
+    /**
+     * Remove a seed de uma rifa ainda não sorteada antes de devolvê-la ao
+     * cliente (painel inclusive): conhecer a seed antes do sorteio permite
+     * prever o resultado.
+     *
+     * @param array<string,mixed> $rifa
+     * @return array<string,mixed>
+     */
+    public static function ocultarSemente(array $rifa): array
+    {
+        if (($rifa['status'] ?? null) !== 'sorteado') {
+            $rifa['seed'] = null;
+        }
+        return $rifa;
+    }
+
     public function mudarStatus(int $id, string $status): void
     {
         $this->pdo->prepare('UPDATE rifas SET status = ? WHERE id = ?')
@@ -350,8 +382,12 @@ final class RifaRepository
         $existe = $this->divulgadorDaPessoa($rifaId, $pessoaId);
         if ($existe) {
             if (!$existe['ativo']) {
-                $this->pdo->prepare('UPDATE rifa_divulgadores SET ativo = 1 WHERE id = ?')
-                          ->execute([$existe['id']]);
+                // reativação gera token novo: o link antigo (que pode ter
+                // vazado e motivado a desativação) continua inválido
+                $novo = bin2hex(random_bytes(16));
+                $this->pdo->prepare('UPDATE rifa_divulgadores SET ativo = 1, token = ? WHERE id = ?')
+                          ->execute([$novo, $existe['id']]);
+                $existe['token'] = $novo;
             }
             $existe['ativo'] = 1;
             return $existe;
@@ -661,11 +697,13 @@ final class RifaRepository
 
     /**
      * Sorteia vencedores (status → 'sorteado').
-     * metodo 'sistema': SHA-256(seed:premioId:i) → índice no pool elegível.
+     * metodo 'sistema': SHA-256(seed:premioId:i) → índice no pool elegível,
+     * com a seed comprometida na ativação (comprometerSemente); rifa antiga
+     * sem compromisso recebe uma seed aleatória na hora.
      * metodo 'federal': últimos N dígitos dos números informados; fallback
      * determinístico. Transacional.
      */
-    public function sortear(int $rifaId, ?string $seed, ?string $federalNumeros): array
+    public function sortear(int $rifaId, ?string $federalNumeros): array
     {
         $rifa = $this->buscar($rifaId);
         $premios = $this->listarPremios($rifaId);
@@ -708,7 +746,7 @@ final class RifaRepository
                     $vencedores[] = $vencedor;
                 }
             } else {
-                $seedFinal = $seed ?: bin2hex(random_bytes(32));
+                $seedFinal = (string) ($rifa['seed'] ?? '') ?: bin2hex(random_bytes(32));
                 foreach ($premios as $i => $premio) {
                     if ($pool === []) {
                         break;

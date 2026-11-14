@@ -75,7 +75,8 @@ mas o desenho nasce do cenário multiprêmios acima.
   bilhetes pagos para devolução manual.
 - **R6.** Um mesmo bilhete não ganha 2 prêmios; comprador pode ganhar
   prêmios diferentes com bilhetes diferentes? **Decisão D-R7.**
-- **R7.** Resultado público exibe seed + SHA-256 (sistema) ou os
+- **R7.** Compromisso SHA-256 publicado na ativação; resultado público
+  revela a seed (sistema) ou os
   números da Federal informados — auditável por qualquer pessoa.
 - **R8.** Link de divulgação atribui a venda no momento da RESERVA; se o
   mesmo telefone comprar por 2 links, cada bilhete fica com o
@@ -141,7 +142,7 @@ contato) e `v_rifa_vendas` (totais por sorteio/membro/depto p/ ranking).
 **Autenticadas** (`/api/rifas…`; escrita admin/secretaria; líder escopado
 ao próprio depto onde marcado):
 - `GET/POST /rifas`, `GET/PUT /rifas/{id}`, `DELETE` (soft, só rascunho)
-- `POST /rifas/{id}/ativar|encerrar|cancelar|sortear` `{seed?|federal_numeros}`
+- `POST /rifas/{id}/ativar|encerrar|cancelar|sortear` `{federal_numeros?}` (seed vem do compromisso da ativação)
 - `POST/PUT/DELETE /rifas/{id}/premios[/{pid}]` — prêmio exige `departamento_id`
 - `PUT /rifas/{id}/reparticao` `[{destino,tipo,percentual}…]` (replace-all, valida Σ=100)
 - `GET/POST /rifas/{id}/divulgadores` `{pessoa_id}` — só membro ativo de
@@ -159,9 +160,11 @@ ao próprio depto onde marcado):
   (D-R10: **não** expõe nome do divulgador nem dados de compradores)
 - `POST /public/sorteios/{slug}/reservar` `{nome, telefone, quantidade,
   v?}` — aloca N números em transação (`FOR UPDATE`), respeita R2/R4/R8,
-  anti-flood por IP+telefone
+  anti-flood por IP (`rate_limit_eventos`, 0011: 30 req/10 min e 300
+  números/h por IP → 429 `MUITAS_TENTATIVAS`) + limite por telefone
 - `GET /public/sorteios/{slug}/bilhetes?telefone=` — só números+status
-  (sem nome — LGPD)
+  (sem nome — LGPD); só rifas ativas/encerradas/sorteadas (404 caso
+  contrário); 30 consultas/10 min por IP (429)
 
 ## 6. Frontend
 
@@ -178,10 +181,24 @@ ao próprio depto onde marcado):
 
 ## 7. Algoritmo de apuração (portado do Conectados)
 
-**sistema:** `seed = informada ? : bin2hex(random_bytes(32))`; por prêmio
-i: `h = hash('sha256', "$seed:$premioId:$i")`, índice
-`hexdec(substr($h,0,15)) % total_elegiveis`; vencedor sai do pool;
-`prova_hash = sha256($seed)` público.
+**sistema (commit-reveal, T2.8):** na **ativação** o servidor gera
+`seed = bin2hex(random_bytes(32))` e publica `prova_hash = sha256($seed)`
+(compromisso visível na página pública antes das vendas). A seed fica
+oculta em toda resposta (painel e site) até `status = 'sorteado'`; o
+sorteio usa a seed comprometida — o body não aceita mais `seed`, e o
+`metodo` não muda depois da ativação. Por prêmio i:
+`h = hash('sha256', "$seed:$premioId:$i")`, índice
+`hexdec(substr($h,0,15)) % total_elegiveis`; vencedor sai do pool.
+Após o sorteio a seed é revelada e qualquer pessoa confere
+`sha256(seed) == prova_hash`. Risco residual: quem tem acesso ao banco
+conhece a seed antes do sorteio e poderia escolher quais bilhetes
+confirmar como pagos (a seed também vai nos backups OPS.3) — mitigado
+por acesso restrito ao banco/servidor/backups.
+
+**Rate limit (0011):** chave = IP (IPv6 agrupado em /64). Limites folgados
+por causa de CGNAT e wifi compartilhado; contagem não é atômica (rajadas
+paralelas podem exceder em até `max_por_pessoa` × concorrência). O IP é
+dado pessoal (LGPD/D7): retido ~1 dia em `rate_limit_eventos`.
 
 **federal:** `federal_numeros` na ordem dos prêmios; últimos N dígitos
 (N = dígitos de `total_numeros`); percorre até bilhete elegível;

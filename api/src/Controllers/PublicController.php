@@ -7,6 +7,7 @@ namespace Adab\Api\Controllers;
 use Adab\Api\Json;
 use Adab\Api\Validacao;
 use Adab\Api\Repositories\ProgramacaoRepository;
+use Adab\Api\Repositories\RateLimitRepository;
 use Adab\Api\Repositories\RifaRepository;
 use PDO;
 use PDOException;
@@ -21,7 +22,14 @@ use Psr\Http\Message\ServerRequestInterface as Request;
  */
 final class PublicController
 {
+    /** Limites por IP (T2.8). */
+    // CGNAT/wifi da igreja compartilham IP: limites folgados, foco em bot
+    public const LIMITE_RESERVAS = 30;          // requisições de reserva / 10 min
+    public const LIMITE_NUMEROS_HORA = 300;     // números reservados / 60 min
+    public const LIMITE_CONSULTAS = 30;         // consultas por telefone / 10 min
+
     private PDO $pdoConn;
+    private RateLimitRepository $limite;
     private ProgramacaoRepository $programacao;
     private RifaRepository $rifas;
 
@@ -30,6 +38,26 @@ final class PublicController
         $this->pdoConn = $pdo;
         $this->programacao = new ProgramacaoRepository($pdo);
         $this->rifas = new RifaRepository($pdo);
+        $this->limite = new RateLimitRepository($pdo);
+    }
+
+    /** IP do cliente; IPv6 agrupado no prefixo /64 (rotação dentro do bloco não burla o limite). */
+    private function ip(): string
+    {
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+        if (str_contains($ip, ':')) {
+            $bin = @inet_pton($ip);
+            if ($bin !== false && strlen($bin) === 16) {
+                return (string) inet_ntop(substr($bin, 0, 8) . str_repeat("\0", 8)) . '/64';
+            }
+        }
+        return substr($ip, 0, 45);
+    }
+
+    private function muitasTentativas(Response $response): Response
+    {
+        return Json::erro($response, 'MUITAS_TENTATIVAS',
+            'Muitas tentativas a partir desta rede. Aguarde alguns minutos e tente novamente.', 429);
     }
 
     public function programacao(Request $request, Response $response): Response
@@ -85,6 +113,12 @@ final class PublicController
             return Json::resposta($response, ['data' => ['ok' => true]], 201);
         }
 
+        $ip = $this->ip();
+        if ($this->limite->somar('sorteio_reserva', $ip, 10) >= self::LIMITE_RESERVAS) {
+            return $this->muitasTentativas($response);
+        }
+        $this->limite->registrar('sorteio_reserva', $ip);
+
         // rifa interna por slug — a view expõe só o que é público;
         // aqui precisamos do id e status real
         $stmt = $this->pdoStmt('SELECT id, status, data_sorteio, max_por_pessoa, valor_numero FROM rifas WHERE slug = ? AND deleted_at IS NULL', [(string) $args['slug']]);
@@ -113,6 +147,11 @@ final class PublicController
         $max = (int) $rifa['max_por_pessoa'];
         if ($quantidade < 1 || $quantidade > $max) {
             return Json::erro($response, 'VALIDACAO', "Você pode reservar entre 1 e {$max} números por vez.", 400);
+        }
+
+        // limite de números por IP (evita esgotar a rifa variando telefones)
+        if ($this->limite->somar('sorteio_numeros', $ip, 60) + $quantidade > self::LIMITE_NUMEROS_HORA) {
+            return $this->muitasTentativas($response);
         }
 
         // limite por pessoa: conta reservas ativas do telefone
@@ -150,6 +189,7 @@ final class PublicController
             }
             throw $e;
         }
+        $this->limite->registrar('sorteio_numeros', $ip, $quantidade);
 
         $total = round($quantidade * (float) $rifa['valor_numero'], 2);
         return Json::resposta($response, ['data' => [
@@ -166,7 +206,18 @@ final class PublicController
         if (strlen($telefone) < 10) {
             return Json::erro($response, 'VALIDACAO', 'Informe o telefone com DDD.', 400);
         }
-        $stmt = $this->pdoStmt('SELECT id FROM rifas WHERE slug = ? AND deleted_at IS NULL', [(string) $args['slug']]);
+        // anti-enumeração de telefones
+        $ip = $this->ip();
+        if ($this->limite->somar('sorteio_consulta', $ip, 10) >= self::LIMITE_CONSULTAS) {
+            return $this->muitasTentativas($response);
+        }
+        $this->limite->registrar('sorteio_consulta', $ip);
+        // só sorteios públicos (rascunho/cancelado não existem para o público)
+        $stmt = $this->pdoStmt(
+            "SELECT id FROM rifas WHERE slug = ? AND deleted_at IS NULL
+                AND status IN ('ativo','encerrado','sorteado')",
+            [(string) $args['slug']]
+        );
         $rifaId = (int) ($stmt->fetchColumn() ?: 0);
         if (!$rifaId) {
             return Json::erro($response, 'NAO_ENCONTRADO', 'Sorteio não encontrado.', 404);

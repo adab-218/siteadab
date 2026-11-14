@@ -16,16 +16,16 @@ flowchart TD
 
     subgraph PUBLIC["grupo público (sem auth)"]
         PL["GET /public/sorteios<br/>GET /public/sorteios/{slug}"]
-        RES["POST /public/sorteios/{slug}/reservar<br/>{nome,telefone,quantidade,v?}<br/>limite/pessoa + honeypot"]
-        MEU["GET /public/sorteios/{slug}/bilhetes?telefone=<br/>(LGPD: só número+status)"]
+        RES["POST /public/sorteios/{slug}/reservar<br/>{nome,telefone,quantidade,v?}<br/>limite/pessoa + honeypot<br/>rate limit por IP (429)"]
+        MEU["GET /public/sorteios/{slug}/bilhetes?telefone=<br/>(LGPD: só número+status; rate limit por IP)"]
     end
 
-    CICLO -->|"ativa: prêmio+regulamento+Σ100%"| AT["status: ativo"]
+    CICLO -->|"ativa: prêmio+regulamento+Σ100%<br/>sistema: gera seed secreta,<br/>publica prova_hash=SHA-256(seed)"| AT["status: ativo"]
     AT --> RES
     RES -->|"números sequenciais<br/>transação FOR UPDATE"| PEND["bilhete pendente<br/>expira_em = +24h"]
     PEND -->|"lazy expire"| LIB["expirado → número volta ao pool"]
     PEND -->|"secretaria confirma PIX"| PAGO["pago → elegível ao sorteio"]
     DIV -->|"link ?v={token}"| RES
-    CICLO -->|"sortear: sistema seed+SHA-256<br/>ou federal (últimos N dígitos)"| SOR["status: sorteado<br/>vencedores + prova pública"]
+    CICLO -->|"sortear: sistema usa seed comprometida<br/>ou federal (últimos N dígitos)"| SOR["status: sorteado<br/>vencedores + seed revelada"]
     SOR --> MEU
     REL -->|"arrecadado × %<br/>rateio proporcional por depto"| EXT["extrato de repartição"]

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Adab\Api\Tests;
 
+use Adab\Api\Controllers\PublicController;
 use Adab\Api\Migrator;
 use PDO;
 use PHPUnit\Framework\TestCase;
@@ -62,7 +63,7 @@ final class AutorizacaoIntegrationTest extends TestCase
     private function fixtures(): void
     {
         $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
-        foreach (['rifa_bilhetes', 'rifa_divulgadores', 'rifa_premios', 'rifa_reparticao', 'rifas',
+        foreach (['rate_limit_eventos', 'rifa_bilhetes', 'rifa_divulgadores', 'rifa_premios', 'rifa_reparticao', 'rifas',
                   'ebd_frequencias', 'ebd_aulas', 'ebd_periodos', 'ebd_alunos', 'ebd_professores',
                   'ebd_classes', 'membro_departamentos', 'departamentos', 'membros',
                   'usuarios', 'pessoas'] as $t) {
@@ -252,6 +253,108 @@ final class AutorizacaoIntegrationTest extends TestCase
             $ids['b' . ucfirst($k)] = (int) $this->pdo->lastInsertId();
         }
         return $ids + ['rifa' => $rifa, 'pessoaPropria' => $propria, 'pessoaAlheia' => $alheia];
+    }
+
+    /**
+     * T2.8 — commit-reveal: a seed é gerada na ativação, só o hash é
+     * exposto até o sorteio, e o sorteio usa a seed comprometida (body
+     * 'seed' é ignorado). Depois do sorteio, a seed fica pública.
+     */
+    public function testCompromissoDaSementeNaAtivacao(): void
+    {
+        $this->pdo->exec("INSERT INTO rifas (titulo, slug, regulamento, valor_numero, total_numeros, metodo)
+                          VALUES ('Sorteio Seed', 'sorteio-seed', 'Regulamento.', 10.00, 50, 'sistema')");
+        $rifa = (int) $this->pdo->lastInsertId();
+        $this->pdo->prepare('INSERT INTO rifa_premios (rifa_id, titulo, departamento_id) VALUES (?, "P1", ?)')
+            ->execute([$rifa, $this->deptoComLider]);
+        $this->pdo->prepare('INSERT INTO rifa_reparticao (rifa_id, destino, percentual) VALUES (?, "Obra", 100)')
+            ->execute([$rifa]);
+
+        [$s, $body] = $this->request('POST', "/rifas/{$rifa}/ativar", 'secretaria');
+        $this->assertSame(200, $s);
+        $this->assertNull($body['data']['seed']);
+        $prova = (string) $body['data']['prova_hash'];
+        $this->assertSame(64, strlen($prova));
+        $seedBanco = (string) $this->pdo->query("SELECT seed FROM rifas WHERE id = {$rifa}")->fetchColumn();
+        $this->assertSame(hash('sha256', $seedBanco), $prova);
+
+        // nem o painel nem o site veem a seed antes do sorteio
+        [, $body] = $this->request('GET', "/rifas/{$rifa}", 'admin');
+        $this->assertNull($body['data']['seed']);
+        [, $body] = $this->request('GET', '/rifas', 'admin');
+        $this->assertNull($body['data']['itens'][0]['seed']);
+        [, $body] = $this->request('GET', '/public/sorteios/sorteio-seed');
+        $this->assertNull($body['data']['seed']);
+        $this->assertSame($prova, $body['data']['prova_hash']);
+
+        // método não muda depois da ativação
+        [$s, ] = $this->request('PUT', "/rifas/{$rifa}", 'secretaria', ['metodo' => 'federal']);
+        $this->assertSame(422, $s);
+
+        $this->pdo->prepare('INSERT INTO rifa_bilhetes (rifa_id, numero, nome, telefone, status_pag) VALUES (?, 7, "X", "91999990000", "pago")')
+            ->execute([$rifa]);
+        [$s, $body] = $this->request('POST', "/rifas/{$rifa}/sortear", 'secretaria', ['seed' => 'escolhida-pelo-operador']);
+        $this->assertSame(200, $s);
+        $this->assertSame($seedBanco, $body['data']['resultado']['seed']);
+        $this->assertSame($prova, $body['data']['resultado']['prova']);
+
+        [, $body] = $this->request('GET', '/public/sorteios/sorteio-seed');
+        $this->assertSame($seedBanco, $body['data']['seed']);
+    }
+
+    /** T2.8 — baixos: vencedor oculto sem escopo; imagem_url só por upload. */
+    public function testVencedorOcultoEImagemSoPorUpload(): void
+    {
+        $f = $this->fixturesRifa();
+        $this->pdo->prepare('UPDATE rifa_bilhetes SET status_pag = "pago" WHERE id = ?')->execute([$f['bProprio']]);
+        $this->pdo->prepare(
+            'INSERT INTO rifa_premios (rifa_id, titulo, departamento_id, bilhete_vencedor_id) VALUES (?, "P1", ?, ?)'
+        )->execute([$f['rifa'], $this->deptoComLider, $f['bProprio']]);
+        $premio = (int) $this->pdo->lastInsertId();
+
+        [, $body] = $this->request('GET', "/rifas/{$f['rifa']}", 'secretaria');
+        $this->assertSame('Comprador proprio', $body['data']['premios'][0]['vencedor_nome']);
+        [, $body] = $this->request('GET', "/rifas/{$f['rifa']}", 'dirigente');
+        $this->assertNull($body['data']['premios'][0]['vencedor_nome']);
+
+        [$s, ] = $this->request('PUT', "/rifas/{$f['rifa']}/premios/{$premio}", 'secretaria',
+            ['titulo' => 'P1b', 'imagem_url' => 'https://evil.example/x.png']);
+        $this->assertSame(200, $s);
+        $this->assertNull($this->pdo->query("SELECT imagem_url FROM rifa_premios WHERE id = {$premio}")->fetchColumn());
+    }
+
+    /** T2.8 — rotas públicas: 429 por IP e consulta só em sorteio público. */
+    public function testRotasPublicasDeSorteioComLimite(): void
+    {
+        $f = $this->fixturesRifa();
+        $this->pdo->exec("INSERT INTO rifas (titulo, slug, valor_numero, total_numeros, status)
+                          VALUES ('Rascunho', 'sorteio-rascunho', 10.00, 10, 'rascunho')");
+        [$s, ] = $this->request('GET', '/public/sorteios/sorteio-rascunho/bilhetes?telefone=91999990000');
+        $this->assertSame(404, $s);
+
+        [$s, $body] = $this->request('GET', '/public/sorteios/sorteio-auth/bilhetes?telefone=91999990000');
+        $this->assertSame(200, $s);
+        $this->assertCount(2, $body['data']);
+
+        $limite = PublicController::LIMITE_CONSULTAS;
+        $this->pdo->prepare(
+            'INSERT INTO rate_limit_eventos (acao, ip, peso) VALUES ("sorteio_consulta", "0.0.0.0", ?)'
+        )->execute([$limite]);
+        [$s, $body] = $this->request('GET', '/public/sorteios/sorteio-auth/bilhetes?telefone=91999990000');
+        $this->assertSame(429, $s);
+        $this->assertSame('MUITAS_TENTATIVAS', $body['error']['code']);
+
+        // reserva: limite de números por IP na hora
+        $this->pdo->prepare(
+            'INSERT INTO rate_limit_eventos (acao, ip, peso) VALUES ("sorteio_numeros", "0.0.0.0", ?)'
+        )->execute([PublicController::LIMITE_NUMEROS_HORA]);
+        [$s, ] = $this->request('POST', '/public/sorteios/sorteio-auth/reservar', null,
+            ['nome' => 'Fulano', 'telefone' => '91988887777', 'quantidade' => 1]);
+        $this->assertSame(429, $s);
+        $this->assertSame(0, (int) $this->pdo->query(
+            "SELECT COUNT(*) FROM rifa_bilhetes WHERE telefone = '91988887777'"
+        )->fetchColumn());
+        unset($f);
     }
 
     /** D5/R1 no M7: líder só gera/desativa links, vê e confirma bilhetes do próprio depto. */

@@ -176,7 +176,7 @@ pontual/transferida em qualquer data (nº sequencial seguinte).
 | DELETE | `/api/rifas/{id}` — soft, só rascunho | secretaria, admin | ✅ |
 | POST | `/api/rifas/{id}/ativar` — exige prêmio + regulamento + repartição Σ=100 | secretaria, admin | ✅ |
 | POST | `/api/rifas/{id}/encerrar` `/cancelar{motivo}` | secretaria, admin | ✅ |
-| POST | `/api/rifas/{id}/sortear` `{seed? | federal_numeros}` | secretaria, admin | ✅ |
+| POST | `/api/rifas/{id}/sortear` `{federal_numeros?}` — método sistema usa a seed comprometida na ativação (`prova_hash` público; `seed` = null em toda resposta até `sorteado`) | secretaria, admin | ✅ |
 | POST/PUT/DELETE | `/api/rifas/{id}/premios[/{pid}]` — depto doador | secretaria, admin | ✅ |
 | PUT | `/api/rifas/{id}/reparticao` `{linhas[]}` — Σ=100 | secretaria, admin | ✅ |
 | GET/POST/DELETE | `/api/rifas/{id}/divulgadores[/{did}]` — token por membro | secretaria, admin; lider_departamento só membros dos deptos que lidera (403 fora; 404 se `did` de outra rifa) | ✅ |
@@ -195,8 +195,8 @@ pontual/transferida em qualquer data (nº sequencial seguinte).
 | GET | `/api/public/eventos` | festividades públicas |
 | GET | `/api/public/sorteios` | rifas ativas/encerradas/sorteadas (view) |
 | GET | `/api/public/sorteios/{slug}` | detalhe + prêmios + resultado (sem dados de compradores) |
-| POST | `/api/public/sorteios/{slug}/reservar` | `{nome,telefone,quantidade,v?,website?}` — números sequenciais, expira 24h |
-| GET | `/api/public/sorteios/{slug}/bilhetes?telefone=` | consulta LGPD-safe (número+status) |
+| POST | `/api/public/sorteios/{slug}/reservar` | `{nome,telefone,quantidade,v?,website?}` — números sequenciais, expira 24h; por IP: 30 req/10 min e 300 números/h → 429 `MUITAS_TENTATIVAS` |
+| GET | `/api/public/sorteios/{slug}/bilhetes?telefone=` | consulta LGPD-safe (número+status); só rifa ativa/encerrada/sorteada; 30/10 min por IP → 429 |
 
 ### Migrations e operação
 | Método | Rota | Proteção |

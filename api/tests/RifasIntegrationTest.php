@@ -167,7 +167,11 @@ final class RifasIntegrationTest extends TestCase
         // pendente nunca participa
         $this->repo->reservarNumeros($id, 1, ['nome' => 'F', 'telefone' => '91999990008'], null);
 
-        $r = $this->repo->sortear($id, 'seed-fixa-123', null);
+        // compromisso na ativação: prova publicada antes do sorteio
+        $this->repo->comprometerSemente($id, 'seed-fixa-123');
+        $this->assertSame(hash('sha256', 'seed-fixa-123'), $this->repo->buscar($id)['prova_hash']);
+        $this->repo->comprometerSemente($id); // idempotente: não troca a seed
+        $r = $this->repo->sortear($id, null);
         $this->assertSame('seed-fixa-123', $r['seed']);
         $this->assertSame(hash('sha256', 'seed-fixa-123'), $r['prova']);
         $this->assertCount(2, $r['vencedores']);
@@ -181,7 +185,8 @@ final class RifasIntegrationTest extends TestCase
         foreach ($nums2 as $b) {
             $this->repo->marcarPago((int) $b['id'], null);
         }
-        $r2 = $this->repo->sortear($id2, 'seed-fixa-123', null);
+        $this->repo->comprometerSemente($id2, 'seed-fixa-123');
+        $r2 = $this->repo->sortear($id2, null);
         // pool e ids de prêmio diferem → resultado pode divergir; o
         // determinismo exigido é por rifa: verifica prova e consistência
         $this->assertSame(hash('sha256', 'seed-fixa-123'), $r2['prova']);
@@ -197,10 +202,31 @@ final class RifasIntegrationTest extends TestCase
             $this->repo->marcarPago((int) $b['id'], null);
         }
         // números 1,2,3 reservados/pagos; federal "00002" → bilhete 2 vence
-        $r = $this->repo->sortear($id, null, '00002');
+        $r = $this->repo->sortear($id, '00002');
         $this->assertSame([2], $r['vencedores']);
         $rifa = $this->repo->buscar($id);
         $this->assertSame('sorteado', $rifa['status']);
         $this->assertSame('federal:00002', $rifa['seed']);
+    }
+
+    public function testOcultarSementeAteOSorteio(): void
+    {
+        $this->assertNull(RifaRepository::ocultarSemente(['status' => 'ativo', 'seed' => 'x'])['seed']);
+        $this->assertNull(RifaRepository::ocultarSemente(['status' => 'encerrado', 'seed' => 'x'])['seed']);
+        $this->assertSame('x', RifaRepository::ocultarSemente(['status' => 'sorteado', 'seed' => 'x'])['seed']);
+    }
+
+    public function testReativarDivulgadorRotacionaToken(): void
+    {
+        $id = $this->novaRifa();
+        $pessoa = $this->novaPessoa();
+        $dv = $this->repo->criarDivulgador($id, $pessoa);
+        // pedir de novo com o link ativo devolve o mesmo token
+        $this->assertSame($dv['token'], $this->repo->criarDivulgador($id, $pessoa)['token']);
+        $this->repo->desativarDivulgador($id, (int) $dv['id']);
+        $novo = $this->repo->criarDivulgador($id, $pessoa);
+        $this->assertNotSame($dv['token'], $novo['token']);
+        $this->assertFalse($this->repo->divulgadorPorToken($dv['token']));
+        $this->assertNotFalse($this->repo->divulgadorPorToken($novo['token']));
     }
 }

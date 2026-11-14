@@ -133,6 +133,9 @@ links de divulgação por membro, repartição % da arrecadação.
 - [x] Apuração `sistema` (seed+SHA-256) e `federal` — regra do Conectados
 - [x] Upload de capa/imagem de prêmio (`Api\Uploads`)
 - [x] Escopo do líder_departamento no backend (divulgadores/bilhetes/pagar só do seu depto; bilhetes e tokens fechados aos demais perfis)
+- [x] Hardening T2.8 (migration `0011`): rate limit por IP nas rotas
+      públicas, commit-reveal da seed na ativação, `imagem_url` só por
+      upload, `vencedor_nome` restrito, rotação de token ao reativar link
 
 ## Backlog futuro
 

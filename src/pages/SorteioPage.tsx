@@ -229,10 +229,29 @@ const SorteioPage: React.FC = () => {
               {sorteio.metodo === 'federal' && sorteio.federal_numeros && (
                 <p>Números da Loteria Federal: <strong>{sorteio.federal_numeros}</strong></p>
               )}
+              {sorteio.metodo === 'sistema' && sorteio.seed && (
+                <p className="break-all">Semente revelada: <code>{sorteio.seed}</code></p>
+              )}
               {sorteio.prova_hash && (
-                <p className="break-all">Prova do sorteio (SHA-256): <code>{sorteio.prova_hash}</code></p>
+                <p className="break-all">Prova do sorteio (SHA-256{sorteio.metodo === 'sistema' ? ' da semente' : ''}): <code>{sorteio.prova_hash}</code></p>
               )}
             </div>
+          </section>
+        )}
+
+        {/* compromisso (commit-reveal) antes do sorteio */}
+        {!sorteado && sorteio.metodo === 'sistema' && sorteio.prova_hash && (
+          <section className="bg-gray-50 border rounded-lg p-4 text-xs text-gray-700">
+            <h2 className="font-semibold text-gray-900 text-sm mb-1">Transparência do sorteio</h2>
+            <p>
+              A semente do sorteio já foi gerada e está guardada. Este é o seu compromisso
+              (SHA-256), publicado antes das vendas:
+            </p>
+            <p className="break-all mt-1"><code>{sorteio.prova_hash}</code></p>
+            <p className="mt-1">
+              Após o sorteio a semente será revelada aqui — qualquer pessoa pode conferir que o
+              SHA-256 dela é exatamente este valor.
+            </p>
           </section>
         )}
 

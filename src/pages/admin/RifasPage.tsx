@@ -87,7 +87,6 @@ const RifasPage: React.FC = () => {
   const [modalCancelar, setModalCancelar] = useState<Rifa | null>(null);
   const [motivoCancelar, setMotivoCancelar] = useState('');
   const [modalSortear, setModalSortear] = useState<RifaDetalhe | null>(null);
-  const [seed, setSeed] = useState('');
   const [federal, setFederal] = useState('');
 
   const carregar = useCallback(async () => {
@@ -192,11 +191,9 @@ const RifasPage: React.FC = () => {
     setErro('');
     try {
       await rifasApi.sortear(modalSortear.id, {
-        seed: seed || undefined,
         federal_numeros: modalSortear.metodo === 'federal' ? federal : undefined,
       });
       setModalSortear(null);
-      setSeed('');
       setFederal('');
       recarregarDetalhe();
       setAviso('Sorteio realizado! Confira a aba Resultado.');
@@ -434,9 +431,11 @@ const RifasPage: React.FC = () => {
                      placeholder="04589, 12345, 67890"
                      value={federal} onChange={(e) => setFederal(e.target.value)} />
             ) : (
-              <Field id="r-seed" label="Seed (opcional — deixe vazio para aleatória)"
-                     placeholder="Ex.: sorteio-reforma-2026"
-                     value={seed} onChange={(e) => setSeed(e.target.value)} />
+              <p className="text-sm text-gray-700">
+                O sorteio usa a semente secreta gerada na ativação. O compromisso
+                {modalSortear.prova_hash ? <> <code className="break-all">{modalSortear.prova_hash}</code></> : ''} já
+                está público; a semente será revelada junto com o resultado.
+              </p>
             )}
             <p className="text-xs text-gray-500">
               A prova do sorteio (SHA-256) será exibida publicamente. Somente bilhetes pagos participam.
