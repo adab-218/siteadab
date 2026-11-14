@@ -110,7 +110,7 @@ jobs:
           cp uploads/.htaccess deploy_pkg/uploads/
 
       - name: Deploy via FTPS → public_html
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
