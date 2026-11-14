@@ -176,6 +176,8 @@ pontual/transferida em qualquer data (nº sequencial seguinte).
 | DELETE | `/api/rifas/{id}` — soft, só rascunho | secretaria, admin | ✅ |
 | POST | `/api/rifas/{id}/ativar` — exige prêmio + regulamento + repartição Σ=100 | secretaria, admin | ✅ |
 | POST | `/api/rifas/{id}/encerrar` `/cancelar{motivo}` | secretaria, admin | ✅ |
+| POST | `/api/rifas/{id}/reabrir` — encerrado → ativo (422 `DATA_PASSADA` se a data do sorteio já passou) | secretaria, admin | ✅ |
+| POST | `/api/rifas/{id}/rascunho` — ativo/encerrado → rascunho só sem bilhetes pendentes/pagos/gratuitos (422 `TEM_BILHETES`); descarta seed/prova_hash (novo compromisso na próxima ativação) | secretaria, admin | ✅ |
 | POST | `/api/rifas/{id}/sortear` `{federal_numeros?}` — método sistema usa a seed comprometida na ativação (`prova_hash` público; `seed` = null em toda resposta até `sorteado`) | secretaria, admin | ✅ |
 | POST/PUT/DELETE | `/api/rifas/{id}/premios[/{pid}]` — depto doador | secretaria, admin | ✅ |
 | PUT | `/api/rifas/{id}/reparticao` `{linhas[]}` — Σ=100 | secretaria, admin | ✅ |

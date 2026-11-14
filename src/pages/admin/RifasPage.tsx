@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Banknote, Check, Copy, ExternalLink, Gift, Loader2, Pencil, Play,
-  Plus, Square, Ticket, Trash2, Trophy, Users, X, Ban,
+  Plus, Square, Ticket, Trash2, Trophy, Undo2, Users, X, Ban,
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Field from '../../components/ui/Field';
@@ -83,7 +83,7 @@ const RifasPage: React.FC = () => {
 
   const [detalhe, setDetalhe] = useState<RifaDetalhe | null>(null);
   const [aba, setAba] = useState<Aba>('premios');
-  const [confirm, setConfirm] = useState<null | { acao: 'ativar' | 'encerrar' | 'excluir'; rifa: Rifa }>(null);
+  const [confirm, setConfirm] = useState<null | { acao: 'ativar' | 'encerrar' | 'reabrir' | 'rascunho' | 'excluir'; rifa: Rifa }>(null);
   const [modalCancelar, setModalCancelar] = useState<Rifa | null>(null);
   const [motivoCancelar, setMotivoCancelar] = useState('');
   const [modalSortear, setModalSortear] = useState<RifaDetalhe | null>(null);
@@ -157,6 +157,8 @@ const RifasPage: React.FC = () => {
     try {
       if (confirm.acao === 'ativar') await rifasApi.ativar(confirm.rifa.id);
       if (confirm.acao === 'encerrar') await rifasApi.encerrar(confirm.rifa.id);
+      if (confirm.acao === 'reabrir') await rifasApi.reabrir(confirm.rifa.id);
+      if (confirm.acao === 'rascunho') await rifasApi.voltarRascunho(confirm.rifa.id);
       if (confirm.acao === 'excluir') await rifasApi.remover(confirm.rifa.id);
       setConfirm(null);
       setDetalhe(null);
@@ -288,6 +290,21 @@ const RifasPage: React.FC = () => {
                       </button>
                     </>
                   )}
+                  {podeEditar && r.status === 'encerrado' && (
+                    <>
+                      <button onClick={() => setConfirm({ acao: 'reabrir', rifa: r })} className="text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded px-2 py-1 inline-flex items-center gap-1">
+                        <Play size={12} aria-hidden="true" /> Reabrir vendas
+                      </button>
+                      <button onClick={async () => { setDetalhe(await rifasApi.ver(r.id)); setModalSortear(await rifasApi.ver(r.id)); }} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 rounded px-2 py-1 inline-flex items-center gap-1">
+                        <Trophy size={12} aria-hidden="true" /> Sortear
+                      </button>
+                    </>
+                  )}
+                  {podeEditar && (r.status === 'ativo' || r.status === 'encerrado') && (
+                    <button onClick={() => setConfirm({ acao: 'rascunho', rifa: r })} className="text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 inline-flex items-center gap-1">
+                      <Undo2 size={12} aria-hidden="true" /> Voltar para rascunho
+                    </button>
+                  )}
                   {podeEditar && r.status === 'ativo' && (
                     <>
                       <button onClick={() => setConfirm({ acao: 'encerrar', rifa: r })} className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 rounded px-2 py-1 inline-flex items-center gap-1">
@@ -395,7 +412,9 @@ const RifasPage: React.FC = () => {
         <Modal titulo="Confirmar" onClose={() => setConfirm(null)}>
           <p className="text-sm text-gray-700 mb-4">
             {confirm.acao === 'ativar' && 'Ativar este sorteio? Ele ficará visível para reservas públicas.'}
-            {confirm.acao === 'encerrar' && 'Encerrar as vendas deste sorteio? Novas reservas serão bloqueadas.'}
+            {confirm.acao === 'encerrar' && 'Encerrar as vendas deste sorteio? Novas reservas serão bloqueadas (você pode reabrir depois).'}
+            {confirm.acao === 'reabrir' && 'Reabrir as vendas deste sorteio? Ele volta a aceitar reservas públicas.'}
+            {confirm.acao === 'rascunho' && 'Voltar este sorteio para rascunho? Ele sai do site e você pode editar tudo novamente. Só é possível se nenhum número tiver sido reservado ou pago.'}
             {confirm.acao === 'excluir' && 'Excluir este sorteio em rascunho? A ação não pode ser desfeita.'}
           </p>
           <div className="flex justify-end gap-2">

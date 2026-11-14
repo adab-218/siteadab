@@ -225,6 +225,49 @@ final class RifasController
         return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($this->rifas->buscar($id))]);
     }
 
+    /** encerrado → ativo: reabre as vendas. */
+    public function reabrir(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $rifa = $this->rifas->buscar($id);
+        if (!$rifa) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Rifa não encontrada.', 404);
+        }
+        if ($rifa['status'] !== 'encerrado') {
+            return Json::erro($response, 'STATUS_INVALIDO', 'Só rifas encerradas podem ser reabertas.', 422);
+        }
+        if ($rifa['data_sorteio'] && strtotime((string) $rifa['data_sorteio']) < time()) {
+            return Json::erro($response, 'DATA_PASSADA',
+                'A data do sorteio já passou. Volte para rascunho e ajuste a data antes de reabrir.', 422);
+        }
+        $this->rifas->mudarStatus($id, 'ativo');
+        return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($this->rifas->buscar($id))]);
+    }
+
+    /**
+     * ativo/encerrado → rascunho, para voltar a editar tudo. Só sem vendas:
+     * com bilhete reservado/pago, mexer em preço/prêmios lesaria compradores.
+     */
+    public function voltarRascunho(Request $request, Response $response, array $args): Response
+    {
+        $id = (int) $args['id'];
+        $rifa = $this->rifas->buscar($id);
+        if (!$rifa) {
+            return Json::erro($response, 'NAO_ENCONTRADO', 'Rifa não encontrada.', 404);
+        }
+        if (!in_array($rifa['status'], ['ativo', 'encerrado'], true)) {
+            return Json::erro($response, 'STATUS_INVALIDO', 'Só rifas ativas ou encerradas podem voltar para rascunho.', 422);
+        }
+        $n = $this->rifas->contarBilhetesAtivos($id);
+        if ($n > 0) {
+            return Json::erro($response, 'TEM_BILHETES',
+                "Este sorteio já tem {$n} número(s) reservado(s) ou pago(s) e não pode voltar para rascunho. "
+                . 'Você ainda pode reabrir as vendas ou cancelar o sorteio.', 422);
+        }
+        $this->rifas->voltarParaRascunho($id);
+        return Json::resposta($response, ['data' => RifaRepository::ocultarSemente($this->rifas->buscar($id))]);
+    }
+
     public function cancelar(Request $request, Response $response, array $args): Response
     {
         $id = (int) $args['id'];

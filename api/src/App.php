@@ -252,6 +252,10 @@ function criarApp(PDO $pdo, array $config): App
               ->add(PerfilMiddleware::para(['secretaria']));
             $r->post('/{id}/encerrar', [$rifas, 'encerrar'])
               ->add(PerfilMiddleware::para(['secretaria']));
+            $r->post('/{id}/reabrir', [$rifas, 'reabrir'])
+              ->add(PerfilMiddleware::para(['secretaria']));
+            $r->post('/{id}/rascunho', [$rifas, 'voltarRascunho'])
+              ->add(PerfilMiddleware::para(['secretaria']));
             $r->post('/{id}/cancelar', [$rifas, 'cancelar'])
               ->add(PerfilMiddleware::para(['secretaria']));
             $r->post('/{id}/sortear', [$rifas, 'sortear'])

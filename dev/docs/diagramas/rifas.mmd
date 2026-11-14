@@ -6,7 +6,7 @@
 flowchart TD
     subgraph ADMIN["grupo autenticado (Auth → CSRF)<br/>escrita: secretaria/admin; divulgadores, bilhetes e pagar: +lider_departamento (só links do próprio depto — depto congelado no link, 0010)"]
         CRUD["GET/POST/PUT/DELETE /rifas<br/>(delete só em rascunho)"]
-        CICLO["POST /rifas/{id}/ativar|encerrar|cancelar|sortear"]
+        CICLO["POST /rifas/{id}/ativar|encerrar|reabrir|rascunho|cancelar|sortear"]
         PRM["POST/PUT/DELETE /rifas/{id}/premios<br/>(departamento_id doador)"]
         REP["PUT /rifas/{id}/reparticao<br/>(Σ=100% para ativar)"]
         DIV["GET/POST/DELETE /rifas/{id}/divulgadores<br/>(token por membro)"]
@@ -22,6 +22,9 @@ flowchart TD
 
     CICLO -->|"ativa: prêmio+regulamento+Σ100%<br/>sistema: gera seed secreta,<br/>publica prova_hash=SHA-256(seed)"| AT["status: ativo"]
     AT --> RES
+    AT -->|"encerrar"| ENC["status: encerrado"]
+    ENC -->|"reabrir (data futura)"| AT
+    AT & ENC -->|"rascunho: só sem bilhetes<br/>pendentes/pagos (senão 422 TEM_BILHETES)<br/>descarta seed/prova_hash"| RASC["status: rascunho<br/>edição completa"]
     RES -->|"números sequenciais<br/>transação FOR UPDATE"| PEND["bilhete pendente<br/>expira_em = +24h"]
     PEND -->|"lazy expire"| LIB["expirado → número volta ao pool"]
     PEND -->|"secretaria confirma PIX"| PAGO["pago → elegível ao sorteio"]

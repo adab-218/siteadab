@@ -196,6 +196,29 @@ final class RifaRepository
         return $rifa;
     }
 
+    /** Bilhetes que ainda "seguram" número (reservados, pagos ou gratuitos). */
+    public function contarBilhetesAtivos(int $rifaId): int
+    {
+        $this->expirarPendentes($rifaId);
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM rifa_bilhetes
+              WHERE rifa_id = ? AND status_pag IN ('pendente','pago','gratuito')"
+        );
+        $stmt->execute([$rifaId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Volta para rascunho (sem vendas): descarta o compromisso da seed —
+     * uma nova seed é comprometida na próxima ativação.
+     */
+    public function voltarParaRascunho(int $id): void
+    {
+        $this->pdo->prepare(
+            "UPDATE rifas SET status = 'rascunho', seed = NULL, prova_hash = NULL WHERE id = ?"
+        )->execute([$id]);
+    }
+
     public function mudarStatus(int $id, string $status): void
     {
         $this->pdo->prepare('UPDATE rifas SET status = ? WHERE id = ?')

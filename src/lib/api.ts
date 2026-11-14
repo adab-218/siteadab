@@ -910,6 +910,8 @@ export const rifasApi = {
   remover: (id: number) => apiFetch<{ ok: true }>(`/rifas/${id}`, { method: 'DELETE' }),
   ativar: (id: number) => apiFetch<Rifa>(`/rifas/${id}/ativar`, { method: 'POST' }),
   encerrar: (id: number) => apiFetch<Rifa>(`/rifas/${id}/encerrar`, { method: 'POST' }),
+  reabrir: (id: number) => apiFetch<Rifa>(`/rifas/${id}/reabrir`, { method: 'POST' }),
+  voltarRascunho: (id: number) => apiFetch<Rifa>(`/rifas/${id}/rascunho`, { method: 'POST' }),
   cancelar: (id: number, motivo: string) =>
     apiFetch<Rifa>(`/rifas/${id}/cancelar`, { method: 'POST', body: JSON.stringify({ motivo }) }),
   sortear: (id: number, p: { federal_numeros?: string }) =>

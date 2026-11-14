@@ -360,6 +360,36 @@ final class AutorizacaoIntegrationTest extends TestCase
         $this->assertSame($seedBanco, $body['data']['seed']);
     }
 
+    /** Retorno de status: encerrado → ativo e (sem vendas) → rascunho. */
+    public function testReabrirEVoltarParaRascunho(): void
+    {
+        $this->pdo->exec("INSERT INTO rifas (titulo, slug, valor_numero, total_numeros, status, seed, prova_hash)
+                          VALUES ('Teste Status', 'teste-status', 10.00, 50, 'encerrado', 'abc', SHA2('abc', 256))");
+        $rifa = (int) $this->pdo->lastInsertId();
+
+        [$s, ] = $this->request('POST', "/rifas/{$rifa}/reabrir", 'dirigente');
+        $this->assertSame(403, $s);
+        [$s, $body] = $this->request('POST', "/rifas/{$rifa}/reabrir", 'secretaria');
+        $this->assertSame(200, $s);
+        $this->assertSame('ativo', $body['data']['status']);
+        [$s, ] = $this->request('POST', "/rifas/{$rifa}/reabrir", 'secretaria');
+        $this->assertSame(422, $s); // já está ativo
+
+        // sem bilhetes: volta para rascunho e descarta o compromisso da seed
+        [$s, $body] = $this->request('POST', "/rifas/{$rifa}/rascunho", 'secretaria');
+        $this->assertSame(200, $s);
+        $this->assertSame('rascunho', $body['data']['status']);
+        $this->assertNull($body['data']['prova_hash']);
+        [$s, ] = $this->request('POST', "/rifas/{$rifa}/rascunho", 'secretaria');
+        $this->assertSame(422, $s); // já é rascunho
+
+        // com bilhetes reservados: bloqueado
+        $f = $this->fixturesRifa();
+        [$s, $body] = $this->request('POST', "/rifas/{$f['rifa']}/rascunho", 'secretaria');
+        $this->assertSame(422, $s);
+        $this->assertSame('TEM_BILHETES', $body['error']['code']);
+    }
+
     /** T2.8 — baixos: vencedor oculto sem escopo; imagem_url só por upload. */
     public function testVencedorOcultoEImagemSoPorUpload(): void
     {

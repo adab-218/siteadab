@@ -143,6 +143,9 @@ contato) e `v_rifa_vendas` (totais por sorteio/membro/depto p/ ranking).
 ao próprio depto onde marcado):
 - `GET/POST /rifas`, `GET/PUT /rifas/{id}`, `DELETE` (soft, só rascunho)
 - `POST /rifas/{id}/ativar|encerrar|cancelar|sortear` `{federal_numeros?}` (seed vem do compromisso da ativação)
+- `POST /rifas/{id}/reabrir` (encerrado → ativo) e `POST /rifas/{id}/rascunho`
+  (ativo/encerrado → rascunho, só se nenhum número estiver reservado/pago;
+  descarta o compromisso da seed)
 - `POST/PUT/DELETE /rifas/{id}/premios[/{pid}]` — prêmio exige `departamento_id`
 - `PUT /rifas/{id}/reparticao` `[{destino,tipo,percentual}…]` (replace-all, valida Σ=100)
 - `GET/POST /rifas/{id}/divulgadores` `{pessoa_id}` — só membro ativo de
