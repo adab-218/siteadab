@@ -9,6 +9,7 @@ use Adab\Api\Controllers\AdminController;
 use Adab\Api\Controllers\AuthController;
 use Adab\Api\Controllers\CatalogosController;
 use Adab\Api\Controllers\CultosController;
+use Adab\Api\Controllers\DashboardController;
 use Adab\Api\Controllers\DepartamentosController;
 use Adab\Api\Controllers\EbdController;
 use Adab\Api\Controllers\EventosController;
@@ -73,11 +74,16 @@ function criarApp(PDO $pdo, array $config): App
     // PerfilMiddleware explícito.
     $app->group('', function (RouteCollectorProxy $g) use ($pdo, $config) {
         $g->get('/cargos', [new CatalogosController($pdo), 'cargos']);
+        // KPIs agregados (sem dados pessoais) — qualquer perfil autenticado
+        $g->get('/dashboard/resumo', [new DashboardController($pdo), 'resumo']);
 
         $membros = new MembrosController($pdo, (string) ($config['uploads_dir'] ?? ''));
         $g->group('/membros', function (RouteCollectorProxy $m) use ($membros) {
             $m->get('', [$membros, 'listar']);
             $m->get('/aniversariantes', [$membros, 'aniversariantes']);
+            // exportação em massa de dados pessoais — LGPD: só secretaria/admin
+            $m->get('/exportar', [$membros, 'exportar'])
+              ->add(PerfilMiddleware::para(['secretaria']));
             $m->get('/{id}', [$membros, 'ver']);
             $m->post('', [$membros, 'criar'])
               ->add(PerfilMiddleware::para(['secretaria']));

@@ -4,8 +4,8 @@ flowchart TD
     PUSH["push → master"] --> CI["Workflow CI<br/>2 jobs paralelos"]
     PUSH --> DEP["Workflow Deploy<br/>(job único, timeout 20min)"]
 
-    CI --> CIF["job frontend:<br/>npm ci → lint → tsc -b → vitest → build"]
-    CI --> CIA["job api (PHP 8.3, pdo_mysql+pdo_sqlite):<br/>composer install → composer test (PHPUnit)"]
+    CI --> CIF["job frontend:<br/>npm ci → npm audit (prod, high) → lint → tsc -b → vitest → build"]
+    CI --> CIA["job api (PHP 8.3, pdo_mysql+pdo_sqlite):<br/>composer install → composer audit → composer test (PHPUnit)"]
 
     DEP --> D1["1. Verificação completa<br/>(idêntica ao CI)"]
     D1 --> D2["2. Composer: install + test (MySQL 8 service,<br/>integração não é pulada) → reinstall --no-dev"]

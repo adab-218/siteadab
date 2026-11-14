@@ -27,6 +27,9 @@
     "test": "phpunit"
   },
   "config": {
+    "audit": {
+      "abandoned": "report"
+    },
     "platform": {
       "php": "8.3"
     }

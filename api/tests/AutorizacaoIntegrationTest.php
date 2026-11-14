@@ -63,7 +63,7 @@ final class AutorizacaoIntegrationTest extends TestCase
     private function fixtures(): void
     {
         $this->pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
-        foreach (['rate_limit_eventos', 'rifa_bilhetes', 'rifa_divulgadores', 'rifa_premios', 'rifa_reparticao', 'rifas',
+        foreach (['audit_log', 'rate_limit_eventos', 'rifa_bilhetes', 'rifa_divulgadores', 'rifa_premios', 'rifa_reparticao', 'rifas',
                   'ebd_frequencias', 'ebd_aulas', 'ebd_periodos', 'ebd_alunos', 'ebd_professores',
                   'ebd_classes', 'membro_departamentos', 'departamentos', 'membros',
                   'usuarios', 'pessoas'] as $t) {
@@ -146,6 +146,64 @@ final class AutorizacaoIntegrationTest extends TestCase
         }
         $res = $this->app->handle($req);
         return [$res->getStatusCode(), json_decode((string) $res->getBody(), true)];
+    }
+
+    /** GET sem JSON (download): [status, corpo bruto, Content-Type]. */
+    private function requestRaw(string $uri, string $perfil): array
+    {
+        $_SESSION = [
+            'usuario' => ['id' => $this->usuarios[$perfil], 'pessoa_id' => $this->pessoas[$perfil], 'perfil' => $perfil],
+            'csrf' => 'tok',
+            'ultimo_acesso' => time(),
+        ];
+        $res = $this->app->handle($this->requests->createServerRequest('GET', '/api' . $uri));
+        return [$res->getStatusCode(), (string) $res->getBody(), $res->getHeaderLine('Content-Type')];
+    }
+
+    /** Exportação CSV de membros: só secretaria/admin, sem CPF, à prova de fórmula. */
+    public function testExportarMembrosCsv(): void
+    {
+        $this->pdo->prepare('UPDATE pessoas SET cpf = ?, telefone = ? WHERE id = ?')
+            ->execute(['529.982.247-25', '=HYPERLINK("http://x")', $this->membroId]);
+
+        foreach (['dirigente', 'lider_departamento', 'ebd_admin'] as $perfil) {
+            [$s, ] = $this->requestRaw('/membros/exportar', $perfil);
+            $this->assertSame(403, $s, $perfil);
+        }
+
+        [$s, $csv, $tipo] = $this->requestRaw('/membros/exportar?status=ativo', 'secretaria');
+        $this->assertSame(200, $s);
+        $this->assertStringStartsWith('text/csv', $tipo);
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
+        $linhas = array_values(array_filter(explode("\n", substr($csv, 3))));
+        $this->assertStringStartsWith('Carteirinha;Nome;', $linhas[0]);
+        $this->assertStringContainsString('Membro para Vínculo', $csv);
+        $this->assertStringNotContainsString('529.982.247-25', $csv);
+        $this->assertStringContainsString("'=HYPERLINK", $csv);
+
+        $this->assertSame(1, (int) $this->pdo->query(
+            "SELECT COUNT(*) FROM audit_log WHERE acao = 'exportar_csv' AND entidade = 'membros'"
+        )->fetchColumn());
+
+        [$s, ] = $this->requestRaw('/membros/exportar?status=xyz', 'admin');
+        $this->assertSame(400, $s);
+    }
+
+    /** KPIs agregados: qualquer perfil autenticado; 401 sem sessão. */
+    public function testDashboardResumo(): void
+    {
+        [$s, ] = $this->request('GET', '/dashboard/resumo');
+        $this->assertSame(401, $s);
+
+        [$s, $body] = $this->request('GET', '/dashboard/resumo', 'ebd_professor');
+        $this->assertSame(200, $s);
+        $d = $body['data'];
+        $this->assertGreaterThanOrEqual(1, $d['membros']['ativos']);
+        $this->assertGreaterThanOrEqual($d['membros']['ativos'], $d['membros']['total']);
+        foreach (['cultos_mes', 'ebd', 'eventos_proximos_30d', 'rifas_ativas'] as $k) {
+            $this->assertArrayHasKey($k, $d);
+        }
+        $this->assertArrayNotHasKey('itens', $d);
     }
 
     // ===================== negativos =====================

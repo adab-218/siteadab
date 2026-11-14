@@ -64,6 +64,29 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   return body.data as T;
 }
 
+/**
+ * Download de arquivo (CSV etc.) da API: baixa como Blob e dispara o
+ * "salvar como" do navegador. Erros JSON viram ApiError como no apiFetch.
+ */
+export async function apiDownload(path: string, nomePadrao: string): Promise<void> {
+  const res = await fetch(`${API_URL}${path}`, { credentials: 'same-origin' });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as ApiEnvelope<unknown>;
+    throw new ApiError(body.error?.code ?? 'ERRO', body.error?.message ?? 'Erro ao baixar o arquivo.', res.status);
+  }
+  const disp = res.headers.get('Content-Disposition') ?? '';
+  const nome = /filename="([^"]+)"/.exec(disp)?.[1] ?? nomePadrao;
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // revogar só depois: Safari/Firefox ainda leem o blob após o click
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Upload multipart (foto/banner) — FormData define o boundary sozinho. */
 export function apiUpload<T>(path: string, arquivo: File): Promise<T> {
   const fd = new FormData();
@@ -217,6 +240,14 @@ export const membrosApi = {
       }
     }
     return apiFetch<RespostaPaginada<MembroListItem>>(`/membros?${qs}`);
+  },
+  /** CSV (secretaria/admin) com os mesmos filtros da listagem. */
+  exportarCsv(params: { q?: string; status?: string } = {}) {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v) qs.set(k, v);
+    }
+    return apiDownload(`/membros/exportar?${qs}`, 'membros.csv');
   },
   ver: (id: number) => apiFetch<MembroDetalhe>(`/membros/${id}`),
   criar: (pessoa: PessoaPayload, membro: MembroPayload) =>
@@ -960,4 +991,21 @@ export const sorteioPublicoApi = {
   meusBilhetes: (slug: string, telefone: string) =>
     apiFetch<{ numero: number; status_pag: RifaStatusPag; vencedor: number }[]>(
       `/public/sorteios/${slug}/bilhetes?telefone=${encodeURIComponent(telefone)}`),
+};
+
+// ---------------------------------------------------------------------
+// Dashboard (KPIs agregados, sem dados pessoais)
+
+export interface DashboardResumo {
+  /** "AAAA-MM" do servidor — mês dos números de cultos. */
+  referencia_mes: string;
+  membros: { total: number; ativos: number };
+  cultos_mes: { realizados: number; media_presentes: number | null; visitantes: number; decisoes: number };
+  ebd: { matriculados: number; ultima_aula: string | null; presentes: number; frequencia_pct: number | null };
+  eventos_proximos_30d: number;
+  rifas_ativas: number;
+}
+
+export const dashboardApi = {
+  resumo: () => apiFetch<DashboardResumo>('/dashboard/resumo'),
 };

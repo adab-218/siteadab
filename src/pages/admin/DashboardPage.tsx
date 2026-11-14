@@ -1,12 +1,35 @@
 import React, { useEffect, useState } from 'react';
-import { Cake, Loader2 } from 'lucide-react';
-import { Aniversariante, ApiError, membrosApi } from '../../lib/api';
+import { BookOpen, Cake, CalendarDays, Church, Gift, Loader2, Users } from 'lucide-react';
+import { Aniversariante, ApiError, DashboardResumo, dashboardApi, membrosApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth-context';
 
 const MESES = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
   'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
 ];
+
+interface KpiProps {
+  icone: React.ReactNode;
+  titulo: string;
+  valor: React.ReactNode;
+  detalhe?: React.ReactNode;
+}
+
+const Kpi: React.FC<KpiProps> = ({ icone, titulo, valor, detalhe }) => (
+  <div className="bg-white rounded-lg shadow-sm border p-4">
+    <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
+      <span className="text-red-600" aria-hidden="true">{icone}</span>
+      {titulo}
+    </p>
+    <p className="text-2xl font-bold text-gray-800 mt-1">{valor}</p>
+    {detalhe && <p className="text-xs text-gray-500 mt-0.5">{detalhe}</p>}
+  </div>
+);
+
+const dataCurta = (iso: string) => {
+  const [a, m, d] = iso.split('-');
+  return `${d}/${m}/${a}`;
+};
 
 const DashboardPage: React.FC = () => {
   const { usuario } = useAuth();
@@ -15,6 +38,15 @@ const DashboardPage: React.FC = () => {
   const [erro, setErro] = useState('');
 
   const mesAtual = new Date().getMonth() + 1;
+  const [resumo, setResumo] = useState<DashboardResumo | null>(null);
+  const [erroResumo, setErroResumo] = useState('');
+
+  useEffect(() => {
+    dashboardApi
+      .resumo()
+      .then(setResumo)
+      .catch((e) => setErroResumo(e instanceof ApiError ? e.message : 'Erro ao carregar indicadores.'));
+  }, []);
 
   useEffect(() => {
     membrosApi
@@ -33,13 +65,34 @@ const DashboardPage: React.FC = () => {
         <p className="text-gray-500">Painel de gestão do Templo Arthur Bernardes.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border p-5">
-          <h2 className="font-semibold text-gray-800 mb-2">Membros</h2>
-          <p className="text-sm text-gray-500">
-            Cadastro, status e vínculos de departamento — disponível no menu Membros.
+      <section aria-label="Indicadores">
+        {erroResumo ? (
+          <p className="text-sm text-red-600" role="alert">{erroResumo}</p>
+        ) : !resumo ? (
+          <p className="text-sm text-gray-400 flex items-center gap-2" role="status">
+            <Loader2 size={14} className="animate-spin" /> Carregando indicadores…
           </p>
-        </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <Kpi icone={<Users size={14} />} titulo="Membros ativos" valor={resumo.membros.ativos}
+                 detalhe={`de ${resumo.membros.total} cadastrados`} />
+            <Kpi icone={<Church size={14} />} titulo={`Cultos em ${MESES[Number(resumo.referencia_mes.slice(5, 7)) - 1] ?? ''}`}
+                 valor={resumo.cultos_mes.realizados}
+                 detalhe={resumo.cultos_mes.media_presentes !== null
+                   ? `média de ${resumo.cultos_mes.media_presentes} presentes · ${resumo.cultos_mes.decisoes} decisão(ões)`
+                   : 'sem presença lançada'} />
+            <Kpi icone={<BookOpen size={14} />} titulo="Frequência EBD"
+                 valor={resumo.ebd.frequencia_pct !== null ? `${resumo.ebd.frequencia_pct}%` : '—'}
+                 detalhe={resumo.ebd.ultima_aula
+                   ? `${resumo.ebd.presentes} presentes em ${dataCurta(resumo.ebd.ultima_aula)} · ${resumo.ebd.matriculados} matriculados`
+                   : `${resumo.ebd.matriculados} matriculados · sem chamada`} />
+            <Kpi icone={<CalendarDays size={14} />} titulo="Eventos (30 dias)" valor={resumo.eventos_proximos_30d} />
+            <Kpi icone={<Gift size={14} />} titulo="Sorteios ativos" valor={resumo.rifas_ativas} />
+          </div>
+        )}
+      </section>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         <div className="bg-white rounded-lg shadow-sm border p-5">
           <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
@@ -64,13 +117,6 @@ const DashboardPage: React.FC = () => {
               ))}
             </ul>
           )}
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border p-5">
-          <h2 className="font-semibold text-gray-800 mb-2">EBD</h2>
-          <p className="text-sm text-gray-500">
-            Classes, chamada e relatórios — após Membros e Cultos.
-          </p>
         </div>
       </div>
     </div>

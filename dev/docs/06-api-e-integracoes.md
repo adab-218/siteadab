@@ -44,9 +44,9 @@ Implementadas (M1): leitura aberta a todo perfil autenticado —
 | DELETE | `/api/membros/{id}` soft delete — aplica D1 também (deptos, EBD, usuário) | só admin | ✅ |
 | POST | `/api/membros/{id}/foto` — multipart campo `arquivo` (JPG/PNG/WebP ≤ 2 MB) | admin, secretaria | ✅ |
 | DELETE | `/api/membros/{id}/foto` | admin, secretaria | ✅ |
-| GET | `/api/membros/aniversariantes?mes=` | painel | pendente |
 | POST | `/api/membros/importar` (CSV) | admin, secretaria | pendente (D9) |
-| GET | `/api/membros/exportar.csv` | admin, secretaria | pendente |
+| GET | `/api/membros/exportar?q=&status=&cargo_id=&departamento_id=` — CSV `;` + BOM UTF-8; sem CPF/endereço completo/observações (LGPD); células iniciadas por `= + - @` prefixadas com `'` | admin, secretaria | ✅ |
+| GET | `/api/dashboard/resumo` — KPIs agregados: membros ativos/total, cultos do mês (realizados, média de presentes, visitantes, decisões), EBD (matriculados, frequência % da última aula com chamada), eventos nos próximos 30 dias, sorteios ativos | autenticado | ✅ |
 
 ### Departamentos e catálogos (M2)
 

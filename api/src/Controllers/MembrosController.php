@@ -60,6 +60,67 @@ final class MembrosController
         return Json::paginada($response, $r['itens'], $r['total'], $pagina, $porPagina);
     }
 
+    /**
+     * GET /membros/exportar — CSV (secretaria/admin) com os filtros da
+     * listagem. Separador ';' + BOM UTF-8 (Excel pt-BR). Células que
+     * começam com = + - @ (ou tab/CR) recebem ' na frente (CSV injection).
+     */
+    public function exportar(Request $request, Response $response): Response
+    {
+        $q = $request->getQueryParams();
+        $filtros = [
+            'q' => trim((string) ($q['q'] ?? '')),
+            'status' => trim((string) ($q['status'] ?? '')),
+            'cargo_id' => $q['cargo_id'] ?? null,
+            'departamento_id' => $q['departamento_id'] ?? null,
+        ];
+        if ($filtros['status'] !== '' && !in_array($filtros['status'], MembroRepository::statusValidos(), true)) {
+            return Json::erro($response, 'VALIDACAO', 'Status inválido.', 400);
+        }
+
+        $cabecalho = [
+            'numero_carteirinha' => 'Carteirinha', 'nome_completo' => 'Nome', 'nome_social' => 'Nome social',
+            'data_nascimento' => 'Nascimento', 'sexo' => 'Sexo', 'telefone' => 'Telefone', 'email' => 'E-mail',
+            'bairro' => 'Bairro', 'cidade' => 'Cidade', 'status' => 'Status', 'data_status' => 'Data do status',
+            'cargo_nome' => 'Cargo', 'congregacao' => 'Congregação', 'data_batismo' => 'Batismo',
+            'departamentos' => 'Departamentos',
+        ];
+        $linhas = $this->membros->exportar($filtros);
+        // trilha LGPD: exportação em massa de dados pessoais
+        $this->pdo->prepare(
+            "INSERT INTO audit_log (usuario_id, acao, entidade, detalhes) VALUES (?, 'exportar_csv', 'membros', ?)"
+        )->execute([
+            (int) $_SESSION['usuario']['id'],
+            json_encode(['filtros' => array_filter($filtros, fn($v) => $v !== null && $v !== ''), 'linhas' => count($linhas)],
+                JSON_UNESCAPED_UNICODE),
+        ]);
+
+        $fh = fopen('php://temp', 'w+');
+        fwrite($fh, "\xEF\xBB\xBF");
+        fputcsv($fh, array_values($cabecalho), ';', '"', '');
+        foreach ($linhas as $row) {
+            $linha = [];
+            foreach (array_keys($cabecalho) as $k) {
+                $linha[] = self::celulaSegura((string) ($row[$k] ?? ''));
+            }
+            fputcsv($fh, $linha, ';', '"', '');
+        }
+        rewind($fh);
+        $response->getBody()->write((string) stream_get_contents($fh));
+        fclose($fh);
+
+        return $response
+            ->withHeader('Content-Type', 'text/csv; charset=utf-8')
+            ->withHeader('Content-Disposition', 'attachment; filename="membros_' . date('Y-m-d') . '.csv"')
+            ->withHeader('Cache-Control', 'no-store');
+    }
+
+    /** Neutraliza fórmulas de planilha (OWASP CSV injection). */
+    public static function celulaSegura(string $v): string
+    {
+        return $v !== '' && str_contains("=+-@\t\r", $v[0]) ? "'" . $v : $v;
+    }
+
     public function ver(Request $request, Response $response, array $args): Response
     {
         $id = (int) $args['id'];

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Loader2, Pencil, Plus, Search, Trash2, UserCog } from 'lucide-react';
+import { Download, Loader2, Pencil, Plus, Search, Trash2, UserCog } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Field from '../../components/ui/Field';
 import ImagemUpload from '../../components/ui/ImagemUpload';
@@ -48,6 +48,20 @@ const MembrosPage: React.FC = () => {
   const [statusFiltro, setStatusFiltro] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [exportando, setExportando] = useState(false);
+  const [erroExportar, setErroExportar] = useState('');
+
+  const exportar = async () => {
+    setExportando(true);
+    setErroExportar('');
+    try {
+      await membrosApi.exportarCsv({ q: busca.trim(), status: statusFiltro });
+    } catch (e) {
+      setErroExportar(e instanceof ApiError ? e.message : 'Erro ao exportar.');
+    } finally {
+      setExportando(false);
+    }
+  };
 
   const [modalForm, setModalForm] = useState<null | { id?: number }>(null);
   const [modalStatus, setModalStatus] = useState<null | MembroListItem>(null);
@@ -201,15 +215,28 @@ const MembrosPage: React.FC = () => {
           <p className="text-gray-500 text-sm">{total} registro(s)</p>
         </div>
         {podeEditar && (
-          <button
-            onClick={abrirNovo}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-          >
-            <Plus size={16} />
-            Novo membro
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={exportar}
+              disabled={exportando}
+              title="Exporta os membros do filtro atual (sem CPF nem endereço completo)"
+              className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              {exportando ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              Exportar CSV
+            </button>
+            <button
+              onClick={abrirNovo}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+            >
+              <Plus size={16} />
+              Novo membro
+            </button>
+          </div>
         )}
       </div>
+
+      {erroExportar && <p className="text-sm text-red-600" role="alert">{erroExportar}</p>}
 
       {/* Filtros */}
       <div className="bg-white rounded-lg border p-4 flex flex-wrap gap-3 items-center">

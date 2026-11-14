@@ -56,6 +56,61 @@ final class MembroRepository
      */
     public function listarPaginado(array $filtros, int $pagina, int $porPagina): array
     {
+        [$cond, $params] = $this->condicoes($filtros);
+
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) FROM membros m JOIN pessoas p ON p.id = m.pessoa_id WHERE {$cond}"
+        );
+        $stmt->execute($params);
+        $total = (int) $stmt->fetchColumn();
+
+        $offset = ($pagina - 1) * $porPagina;
+        $stmt = $this->pdo->prepare(
+            "SELECT m.pessoa_id, p.nome_completo, p.telefone, p.email,
+                    m.status, m.data_status, m.congregacao, c.nome AS cargo_nome
+               FROM membros m
+               JOIN pessoas p ON p.id = m.pessoa_id
+               LEFT JOIN cargos c ON c.id = m.cargo_id
+              WHERE {$cond}
+              ORDER BY p.nome_completo
+              LIMIT {$porPagina} OFFSET {$offset}"
+        );
+        $stmt->execute($params);
+
+        return ['itens' => $stmt->fetchAll(), 'total' => $total];
+    }
+
+    /**
+     * Exportação (CSV) com os mesmos filtros da listagem. Minimização
+     * LGPD: sem CPF, endereço completo, observações ou foto.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function exportar(array $filtros): array
+    {
+        [$cond, $params] = $this->condicoes($filtros);
+        $stmt = $this->pdo->prepare(
+            "SELECT m.numero_carteirinha, p.nome_completo, p.nome_social, p.data_nascimento,
+                    p.sexo, p.telefone, p.email, p.bairro, p.cidade,
+                    m.status, m.data_status, c.nome AS cargo_nome, m.congregacao,
+                    m.data_batismo,
+                    (SELECT GROUP_CONCAT(d.nome ORDER BY d.nome SEPARATOR ', ')
+                       FROM membro_departamentos md
+                       JOIN departamentos d ON d.id = md.departamento_id
+                      WHERE md.pessoa_id = m.pessoa_id AND md.data_fim IS NULL) AS departamentos
+               FROM membros m
+               JOIN pessoas p ON p.id = m.pessoa_id
+               LEFT JOIN cargos c ON c.id = m.cargo_id
+              WHERE {$cond}
+              ORDER BY p.nome_completo"
+        );
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /** @return array{0:string,1:array<string,mixed>} [condição SQL, parâmetros] */
+    private function condicoes(array $filtros): array
+    {
         $where = ['m.deleted_at IS NULL', 'p.deleted_at IS NULL'];
         $params = [];
 
@@ -83,28 +138,7 @@ final class MembroRepository
                        WHERE departamento_id IN ({$marks}) AND data_fim IS NULL)";
         }
 
-        $cond = implode(' AND ', $where);
-
-        $stmt = $this->pdo->prepare(
-            "SELECT COUNT(*) FROM membros m JOIN pessoas p ON p.id = m.pessoa_id WHERE {$cond}"
-        );
-        $stmt->execute($params);
-        $total = (int) $stmt->fetchColumn();
-
-        $offset = ($pagina - 1) * $porPagina;
-        $stmt = $this->pdo->prepare(
-            "SELECT m.pessoa_id, p.nome_completo, p.telefone, p.email,
-                    m.status, m.data_status, m.congregacao, c.nome AS cargo_nome
-               FROM membros m
-               JOIN pessoas p ON p.id = m.pessoa_id
-               LEFT JOIN cargos c ON c.id = m.cargo_id
-              WHERE {$cond}
-              ORDER BY p.nome_completo
-              LIMIT {$porPagina} OFFSET {$offset}"
-        );
-        $stmt->execute($params);
-
-        return ['itens' => $stmt->fetchAll(), 'total' => $total];
+        return [implode(' AND ', $where), $params];
     }
 
     /** @param array<string,mixed> $dados */

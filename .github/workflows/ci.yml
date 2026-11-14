@@ -17,6 +17,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # dependências de produção (o bundle servido): falha em high/critical
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run versoes
       - run: npm run lint
       - run: npx tsc -b
@@ -45,6 +47,8 @@ jobs:
           php-version: '8.3'
           extensions: pdo_mysql, pdo_sqlite
       - run: composer install --prefer-dist
+        working-directory: api
+      - run: composer audit --no-dev
         working-directory: api
       - run: composer test
         working-directory: api

@@ -73,7 +73,7 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 - [x] Upload de foto → `uploads/membros/` (validar tipo/tamanho)
 - [x] Vínculo com departamentos; alteração de status (soft delete)
 - [~] Campo `consentimento_lgpd_em` (campo existe; termo/política aguardam D7) + termo no cadastro
-- [~] Aniversariantes do mês ✅; exportar CSV; importar CSV com preview
+- [~] Aniversariantes do mês ✅; exportar CSV ✅ (`GET /membros/exportar`); importar CSV com preview (aguarda D9)
 
 ## Fase 3 — Módulo Cultos
 
@@ -102,8 +102,8 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 
 ## Fase 7 — Dashboard e site público
 
-- [~] Dashboard: KPIs (widget de aniversariantes pronto; demais KPIs pendentes) (membros ativos, frequência EBD, eventos,
-      aniversariantes)
+- [x] Dashboard: KPIs (`GET /dashboard/resumo`: membros ativos, cultos do mês, frequência EBD, eventos 30 dias,
+      sorteios ativos) + aniversariantes
 - [x] `GET /api/public/programacao` alimentando o site (substitui
       programação hardcoded e CRUD em memória de `WeeklySchedule`)
 - [x] Seção de festividades dinâmica; lazy loading de imagens/iframes
@@ -111,9 +111,9 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 ## Fase 8 — Qualidade e go-live
 
 - [ ] Cobertura ≥ 70% nas camadas de negócio; e2e dos 5 fluxos críticos
-- [ ] Headers de segurança + CSP; revisão final `.htaccess`
+- [x] Headers de segurança + CSP (em produção) + Permissions-Policy/COOP; revisão final `.htaccess`
 - [ ] LGPD: termo de consentimento, fluxo de direitos do titular
-- [ ] `npm audit fix` + `composer audit` + dependabot
+- [~] `npm audit fix` ✅ + `composer audit` e `npm audit --omit=dev` na CI ✅ + dependabot ✅ — resta: vitest 5 (major) para zerar alertas de dev
 - [~] Cron de backup do banco + teste de restore (script + teste automatizado prontos; agendar cron no cPanel)
 - [ ] Deploy produção + treinamento da secretaria/EBD
 - [ ] Migração de dados existentes (se houver)

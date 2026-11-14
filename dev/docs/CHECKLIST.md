@@ -117,8 +117,12 @@ Legenda: `[x]` concluído · `[ ]` pendente · `[~]` parcial/decidido-adiar
       `MembrosPage` + `membrosApi` + `MembrosIntegrationTest`.
       Upload de foto ✅ (`POST/DELETE /membros/{id}/foto`, multipart
       JPG/PNG/WebP ≤2MB via `Api\Uploads`, `ImagemUpload` no form de
-      edição) + banner de evento ✅ (`/eventos/{id}/banner`). Pendente:
-      importar/exportar CSV e vínculo depto a partir da ficha do membro
+      edição) + banner de evento ✅ (`/eventos/{id}/banner`). Exportar
+      CSV ✅ (`GET /membros/exportar`, secretaria/admin, sem CPF).
+      Cada exportação grava `audit_log` (usuário, filtros, nº de linhas).
+      Pendente: importar CSV (D9) e vínculo depto a partir da ficha.
+      Dev deps: alertas críticos do npm audit vêm do vitest 4 (tinypool) —
+      resolver com upgrade para vitest 5 (major; via Dependabot ou manual)
 - [x] Departamentos + catálogos + aniversariantes — `GET /cargos`,
       CRUD `/departamentos`, vínculo membro↔depto (D5: líder gerencia o
       seu; D6: só membros; reativação após data_fim), `DepartamentosPage`,
