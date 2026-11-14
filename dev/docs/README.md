@@ -21,6 +21,10 @@ atual para uma plataforma completa de gestão eclesiástica.
 | [10 — Estratégia de Testes](10-testes.md) | Pirâmide de testes e cobertura |
 | [11 — Deploy e Operação](11-deploy-e-operacao.md) | CI/CD, backup, observabilidade |
 | [12 — Plano de Ação](12-plano-de-acao.md) | Checklist de implementação por fases |
+| [13 — Módulo Sorteios](13-modulo-rifas.md) | M7 Sorteios beneficentes |
+| [ADR 0002 — PHP/MySQL Hostgator](adr/0002-stack-php-mysql-hostgator.md) | Stack vigente |
+| [CHECKLIST](CHECKLIST.md) | Estado real + decisões D1–D13 |
+| [Diagramas](diagramas/README.md) | Fluxos em Mermaid |
 
 ## Estado atual x visão
 

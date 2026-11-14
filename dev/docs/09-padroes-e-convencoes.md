@@ -6,16 +6,18 @@
   interface de props acima do componente.
 - Textos de UI em pt-BR; nomes de código em pt-BR — domínio
   eclesiástico fica mais legível (`matricularAluno`, `frequencia`).
-- Estilo: Tailwind utilitário; componentes complexos via shadcn/ui.
+- Estilo: Tailwind utilitário (shadcn/ui planejado, não adotado).
   Cor primária `red-600`.
-- Todo acesso à API em `api.ts` do módulo — componentes nunca chamam
+- Todo acesso à API via `src/lib/api.ts` (objetos por módulo) — componentes nunca chamam
   `fetch` diretamente.
-- Formulários: react-hook-form + zod; schema zod por módulo.
+- Formulários: estado React + componentes `src/components/ui/` (react-hook-form
+  + zod planejados, ainda não adotados — exigem aprovação).
 
 ## Código — Backend (PHP)
 
 - PHP 8.x, PSR-12, tipos estritos (`declare(strict_types=1)`).
-- Camadas fixas: Routes → Controllers → Services → Repositories.
+- Camadas: Routes (`api/src/App.php`) → Controllers → Repositories.
+  Services só quando a regra crescer além do controller (ainda não há).
   SQL somente em Repositories, sempre prepared statements (PDO).
 - Sem lógica em `index.php` além de bootstrap/rotas/middlewares.
 - Respostas de erro padronizadas `{ "error": { "code", "message" } }`.

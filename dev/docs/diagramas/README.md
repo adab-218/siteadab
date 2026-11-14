@@ -1,7 +1,7 @@
 # Diagramas de processo (Mermaid)
 
 Cada `.mmd` descreve um fluxo REAL do sistema. São mantidos pelo agente
-`process-documenter` (`.devin/agents/process-documenter.md`) e devem ser
+`process-documenter` (`.claude/agents/process-documenter.md`) e devem ser
 atualizados **no mesmo commit** de qualquer mudança que altere o fluxo
 (ver skill `/process-diagrams` e regra em `AGENTS.md`).
 

@@ -26,8 +26,9 @@ dist-ssr
 .env.*
 !.env.example
 
-# Devin CLI — overrides locais e segredos
-.devin/*.local.json
+# Claude Code — overrides locais e segredos
+.claude/settings.local.json
+CLAUDE.local.md
 AGENTS.local.md
 
 # Backend PHP — segredos, dependências e uploads locais

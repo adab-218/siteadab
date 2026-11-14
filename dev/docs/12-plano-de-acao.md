@@ -3,6 +3,10 @@
 Checklist de implementação (stack: React SPA + PHP/Slim + MySQL na
 Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 
+> Status revisado em 2026-11-14 contra o código. Detalhes e decisões
+> D1–D13 em [`CHECKLIST.md`](CHECKLIST.md) — em caso de divergência, o
+> CHECKLIST prevalece. Legenda: `[x]` feito · `[~]` parcial · `[ ]` pendente.
+
 ## Fase 0 — Fundação e débitos técnicos
 
 - [x] Confirmar versão do PHP no cPanel — **PHP 8.3 (ea-php83)**;
@@ -23,7 +27,7 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 - [x] GitHub Actions: `ci.yml` (lint → tsc → vitest → PHPUnit → build)
       e `deploy.yml` (build → composer --no-dev → config.php via secrets →
       FTPS → migrate) — doc 11
-- [ ] Instalar deps front: `react-router-dom`, `@tanstack/react-query`,
+- [~] Instalar deps front: `react-router-dom` ✅; aguardam aprovação: `@tanstack/react-query`,
       `react-hook-form`, `zod`, `@hookform/resolvers`, shadcn/ui, `sonner`,
       `date-fns`
 - [x] `api/composer.json` com `slim/slim`, `slim/psr7`, `phpmailer/phpmailer`;
@@ -55,54 +59,54 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 - [x] Recuperação de senha (`/auth/recuperar` + `/auth/redefinir`,
       PHPMailer/SMTP — requer `smtp` no config)
 - [x] Middlewares: `AuthMiddleware`, `PerfilMiddleware`, `CsrfMiddleware`
-- [ ] Escopo de dados nos repositórios (implementar junto dos módulos)
-- [ ] Frontend: `/login`, guard `/admin`, contexto de sessão,
+- [x] Escopo de dados nos repositórios (D3 professor×classe, D5 líder×depto) (implementar junto dos módulos)
+- [x] Frontend: `/login`, guard `/admin`, contexto de sessão,
       gestão de usuários (admin)
-- [ ] Testes de autorização negativos para cada perfil (doc 10)
+- [x] Testes de autorização negativos para cada perfil (doc 10)
 
 ## Fase 2 — Módulo Membros
 
-- [ ] Repositories + Services + rotas `/api/membros` (+ pessoas, cargos,
+- [x] Repositories + rotas `/api/membros` (+ pessoas, cargos,
       departamentos)
-- [ ] Lista de membros: busca, filtros, paginação
-- [ ] Cadastro (wizard: pessoais → eclesiásticos → foto) + ficha
-- [ ] Upload de foto → `uploads/membros/` (validar tipo/tamanho)
-- [ ] Vínculo com departamentos; alteração de status (soft delete)
-- [ ] Campo `consentimento_lgpd_em` + termo no cadastro
-- [ ] Aniversariantes do mês; exportar CSV; importar CSV com preview
+- [x] Lista de membros: busca, filtros, paginação
+- [~] Cadastro (formulário único; wizard não adotado) (wizard: pessoais → eclesiásticos → foto) + ficha
+- [x] Upload de foto → `uploads/membros/` (validar tipo/tamanho)
+- [x] Vínculo com departamentos; alteração de status (soft delete)
+- [~] Campo `consentimento_lgpd_em` (campo existe; termo/política aguardam D7) + termo no cadastro
+- [~] Aniversariantes do mês ✅; exportar CSV; importar CSV com preview
 
 ## Fase 3 — Módulo Cultos
 
-- [ ] CRUD tipos de culto; registro de culto (dirigente, pregador,
+- [x] CRUD tipos de culto; registro de culto (dirigente, pregador,
       tema, totais)
-- [ ] Presença nominal (opcional) + relatório por período
+- [x] Presença nominal (opcional) + relatório por período
 
 ## Fase 4 — Festividades e Eventos
 
-- [ ] CRUD eventos + banner (`uploads/eventos/`)
-- [ ] Programação interna por evento; flag `publico`; calendário
+- [x] CRUD eventos + banner (`uploads/eventos/`)
+- [x] Programação interna por evento; flag `publico`; calendário
 
 ## Fase 5 — Ações
 
-- [ ] CRUD ações + voluntários/departamento + beneficiários/resultado
+- [x] CRUD ações + voluntários/departamento + beneficiários/resultado
 
 ## Fase 6 — EBD
 
-- [ ] CRUD classes + vínculo de professores
-- [ ] Períodos letivos + geração das 13 aulas do trimestre
-- [ ] Matrícula de alunos (busca pessoa, transferência, desistência)
-- [ ] `GET/PUT /ebd/aulas/{id}/chamada` — presença, Bíblia, revista,
+- [x] CRUD classes + vínculo de professores
+- [x] Períodos letivos + geração de aulas (domingos do período + pontuais — D8)
+- [x] Matrícula de alunos (busca pessoa, transferência, desistência)
+- [x] `GET/PUT /ebd/aulas/{id}/chamada` — presença, Bíblia, revista,
       oferta, visitante
-- [ ] Tela de chamada mobile
-- [ ] Relatórios: frequência por classe/período, faltosos consecutivos
+- [~] Tela de chamada (aba Chamada da `EbdPage`; validar uso no celular)
+- [x] Relatórios: frequência por classe/período, faltosos consecutivos
 
 ## Fase 7 — Dashboard e site público
 
-- [ ] Dashboard: KPIs (membros ativos, frequência EBD, eventos,
+- [~] Dashboard: KPIs (widget de aniversariantes pronto; demais KPIs pendentes) (membros ativos, frequência EBD, eventos,
       aniversariantes)
-- [ ] `GET /api/public/programacao` alimentando o site (substitui
+- [x] `GET /api/public/programacao` alimentando o site (substitui
       programação hardcoded e CRUD em memória de `WeeklySchedule`)
-- [ ] Seção de festividades dinâmica; lazy loading de imagens/iframes
+- [x] Seção de festividades dinâmica; lazy loading de imagens/iframes
 
 ## Fase 8 — Qualidade e go-live
 
@@ -114,7 +118,7 @@ Hostgator — ver ADR 0002). Ordem sugerida; cada item = uma PR candidata.
 - [ ] Deploy produção + treinamento da secretaria/EBD
 - [ ] Migração de dados existentes (se houver)
 
-## Fase 9 — M7 Sorteios Beneficentes (planejado — doc 13)
+## Fase 9 — M7 Sorteios Beneficentes (doc 13)
 
 Cenário: sorteio multiprêmios — cada depto doa 1 prêmio (R$100–200),
 links de divulgação por membro, repartição % da arrecadação.
@@ -127,7 +131,7 @@ links de divulgação por membro, repartição % da arrecadação.
 - [x] Painel: bilhetes, ranking vendas por membro/depto, extrato de
       repartição (arrecadado × %)
 - [x] Apuração `sistema` (seed+SHA-256) e `federal` — regra do Conectados
-- [ ] Upload de capa/imagem de prêmio (`Api\Uploads`)
+- [x] Upload de capa/imagem de prêmio (`Api\Uploads`)
 - [ ] Escopo do líder_departamento no backend (divulgadores/bilhetes só do seu depto)
 
 ## Backlog futuro

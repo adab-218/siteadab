@@ -53,7 +53,7 @@ adab/
 │   ├── create-user.php    # CLI: cria usuário do painel
 │   └── composer.json
 ├── dev/docs/              # esta documentação
-├── .devin/                # configuração Devin CLI
+├── .claude/               # agentes, skills e settings do Claude Code
 ├── .github/workflows/     # ci.yml + deploy.yml
 └── tests/                 # e2e (Playwright)
 ```
